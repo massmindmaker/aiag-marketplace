@@ -1,0 +1,282 @@
+import {
+  TinkoffConfig,
+  InitPaymentRequest,
+  InitPaymentResponse,
+  GetStateRequest,
+  GetStateResponse,
+  ConfirmRequest,
+  ConfirmResponse,
+  CancelRequest,
+  CancelResponse,
+  ChargeRequest,
+  ChargeResponse,
+  CreatePaymentParams,
+  PaymentResult,
+  WebhookNotification,
+} from './types';
+import { generateToken, verifyWebhookToken, rublesToKopecks, kopecksToRubles } from './utils';
+
+const DEFAULT_API_URL = 'https://securepay.tinkoff.ru/v2';
+
+/**
+ * Tinkoff Acquiring API Client
+ */
+export class TinkoffAcquiring {
+  private readonly terminalKey: string;
+  private readonly secretKey: string;
+  private readonly apiUrl: string;
+
+  constructor(config: TinkoffConfig) {
+    this.terminalKey = config.terminalKey;
+    this.secretKey = config.secretKey;
+    this.apiUrl = config.apiUrl || DEFAULT_API_URL;
+  }
+
+  /**
+   * Make API request
+   */
+  private async request<T>(endpoint: string, data: Record<string, unknown>): Promise<T> {
+    const url = `${this.apiUrl}/${endpoint}`;
+    const token = generateToken(data, this.secretKey);
+    const body = { ...data, Token: token };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Tinkoff API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json() as Promise<T>;
+  }
+
+  /**
+   * Initialize payment (low-level)
+   */
+  async init(params: Omit<InitPaymentRequest, 'TerminalKey' | 'Token'>): Promise<InitPaymentResponse> {
+    return this.request<InitPaymentResponse>('Init', {
+      TerminalKey: this.terminalKey,
+      ...params,
+    });
+  }
+
+  /**
+   * Get payment state
+   */
+  async getState(paymentId: string): Promise<GetStateResponse> {
+    return this.request<GetStateResponse>('GetState', {
+      TerminalKey: this.terminalKey,
+      PaymentId: paymentId,
+    });
+  }
+
+  /**
+   * Confirm authorized payment (two-stage)
+   */
+  async confirm(params: Omit<ConfirmRequest, 'TerminalKey' | 'Token'>): Promise<ConfirmResponse> {
+    return this.request<ConfirmResponse>('Confirm', {
+      TerminalKey: this.terminalKey,
+      ...params,
+    });
+  }
+
+  /**
+   * Cancel or refund payment
+   */
+  async cancel(params: Omit<CancelRequest, 'TerminalKey' | 'Token'>): Promise<CancelResponse> {
+    return this.request<CancelResponse>('Cancel', {
+      TerminalKey: this.terminalKey,
+      ...params,
+    });
+  }
+
+  /**
+   * Charge recurring payment
+   */
+  async charge(params: Omit<ChargeRequest, 'TerminalKey' | 'Token'>): Promise<ChargeResponse> {
+    return this.request<ChargeResponse>('Charge', {
+      TerminalKey: this.terminalKey,
+      ...params,
+    });
+  }
+
+  /**
+   * Create payment (high-level API)
+   */
+  async createPayment(params: CreatePaymentParams): Promise<PaymentResult> {
+    const amountKopecks = rublesToKopecks(params.amount);
+
+    const initParams: Omit<InitPaymentRequest, 'TerminalKey' | 'Token'> = {
+      Amount: amountKopecks,
+      OrderId: params.orderId,
+      Description: params.description,
+      CustomerKey: params.customerKey,
+      SuccessURL: params.successUrl,
+      FailURL: params.failUrl,
+      NotificationURL: params.notificationUrl,
+      Recurrent: params.recurrent ? 'Y' : undefined,
+      DATA: params.metadata,
+    };
+
+    // Add receipt if provided
+    if (params.receipt) {
+      initParams.Receipt = {
+        Items: params.receipt.items.map((item) => ({
+          Name: item.name,
+          Price: rublesToKopecks(item.price),
+          Quantity: item.quantity,
+          Amount: rublesToKopecks(item.price * item.quantity),
+          Tax: item.tax,
+        })),
+        Taxation: params.receipt.taxation,
+        Email: params.email,
+        Phone: params.phone,
+      };
+    }
+
+    const response = await this.init(initParams);
+
+    return {
+      success: response.Success,
+      paymentId: response.PaymentId,
+      orderId: response.OrderId,
+      status: response.Status,
+      amount: kopecksToRubles(response.Amount),
+      paymentUrl: response.PaymentURL,
+      errorCode: response.ErrorCode !== '0' ? response.ErrorCode : undefined,
+      errorMessage: response.Message,
+    };
+  }
+
+  /**
+   * Get payment status (high-level API)
+   */
+  async getPaymentStatus(paymentId: string): Promise<PaymentResult> {
+    const response = await this.getState(paymentId);
+
+    return {
+      success: response.Success,
+      paymentId: response.PaymentId,
+      orderId: response.OrderId,
+      status: response.Status,
+      amount: kopecksToRubles(response.Amount),
+      errorCode: response.ErrorCode !== '0' ? response.ErrorCode : undefined,
+      errorMessage: response.Message,
+    };
+  }
+
+  /**
+   * Refund payment (full or partial)
+   */
+  async refundPayment(paymentId: string, amount?: number): Promise<PaymentResult> {
+    const cancelParams: Omit<CancelRequest, 'TerminalKey' | 'Token'> = {
+      PaymentId: paymentId,
+      Amount: amount ? rublesToKopecks(amount) : undefined,
+    };
+
+    const response = await this.cancel(cancelParams);
+
+    return {
+      success: response.Success,
+      paymentId: response.PaymentId,
+      orderId: response.OrderId,
+      status: response.Status,
+      amount: kopecksToRubles(response.NewAmount),
+      errorCode: response.ErrorCode !== '0' ? response.ErrorCode : undefined,
+      errorMessage: response.Message,
+    };
+  }
+
+  /**
+   * Charge recurring payment (high-level API)
+   * First, you need to init a new payment, then charge it using rebillId
+   */
+  async chargeRecurrent(
+    orderId: string,
+    rebillId: string,
+    amount: number,
+    description?: string
+  ): Promise<PaymentResult> {
+    // First, init a new payment
+    const initResponse = await this.init({
+      Amount: rublesToKopecks(amount),
+      OrderId: orderId,
+      Description: description,
+    });
+
+    if (!initResponse.Success) {
+      return {
+        success: false,
+        paymentId: initResponse.PaymentId,
+        orderId: initResponse.OrderId,
+        status: initResponse.Status,
+        amount: kopecksToRubles(initResponse.Amount),
+        errorCode: initResponse.ErrorCode,
+        errorMessage: initResponse.Message,
+      };
+    }
+
+    // Then charge using rebillId
+    const chargeResponse = await this.charge({
+      PaymentId: initResponse.PaymentId,
+      RebillId: rebillId,
+    });
+
+    return {
+      success: chargeResponse.Success,
+      paymentId: chargeResponse.PaymentId,
+      orderId: chargeResponse.OrderId,
+      status: chargeResponse.Status,
+      amount: kopecksToRubles(chargeResponse.Amount),
+      errorCode: chargeResponse.ErrorCode !== '0' ? chargeResponse.ErrorCode : undefined,
+      errorMessage: chargeResponse.Message,
+    };
+  }
+
+  /**
+   * Verify webhook signature
+   */
+  verifyWebhook(payload: WebhookNotification): boolean {
+    const { Token, ...rest } = payload;
+    return verifyWebhookToken(rest as Record<string, unknown>, Token, this.secretKey);
+  }
+
+  /**
+   * Parse webhook notification
+   */
+  parseWebhook(payload: WebhookNotification): {
+    isValid: boolean;
+    orderId: string;
+    paymentId: string;
+    status: string;
+    amount: number;
+    success: boolean;
+    rebillId?: string;
+    cardPan?: string;
+    errorCode: string;
+  } {
+    return {
+      isValid: this.verifyWebhook(payload),
+      orderId: payload.OrderId,
+      paymentId: String(payload.PaymentId),
+      status: payload.Status,
+      amount: kopecksToRubles(payload.Amount),
+      success: payload.Success,
+      rebillId: payload.RebillId,
+      cardPan: payload.Pan,
+      errorCode: payload.ErrorCode,
+    };
+  }
+}
+
+/**
+ * Create Tinkoff Acquiring client
+ */
+export function createTinkoffClient(config: TinkoffConfig): TinkoffAcquiring {
+  return new TinkoffAcquiring(config);
+}
