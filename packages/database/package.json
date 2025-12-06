@@ -29,7 +29,7 @@
     "drizzle-orm": "^0.30.10"
   },
   "devDependencies": {
-    "@aiag/typescript-config": "workspace:*",
+    "@aiag/typescript-config": "*",
     "drizzle-kit": "^0.21.4",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5"

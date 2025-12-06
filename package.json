@@ -19,13 +19,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "@aiag/typescript-config": "workspace:*",
+    "@aiag/typescript-config": "*",
     "prettier": "^3.2.5",
     "turbo": "^2.0.0",
     "typescript": "^5.4.5"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "packageManager": "pnpm@8.15.6"
+  }
 }

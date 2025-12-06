@@ -24,7 +24,7 @@
     "zod": "^3.23.6"
   },
   "devDependencies": {
-    "@aiag/typescript-config": "workspace:*",
+    "@aiag/typescript-config": "*",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5"
   }

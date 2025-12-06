@@ -18,7 +18,7 @@
     "test": "vitest"
   },
   "devDependencies": {
-    "@aiag/typescript-config": "workspace:*",
+    "@aiag/typescript-config": "*",
     "@types/node": "^20.12.7",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5",

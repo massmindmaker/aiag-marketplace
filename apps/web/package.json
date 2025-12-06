@@ -10,8 +10,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@aiag/database": "workspace:*",
-    "@aiag/tinkoff": "workspace:*",
+    "@aiag/database": "*",
+    "@aiag/tinkoff": "*",
     "@auth/drizzle-adapter": "^1.1.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -34,7 +34,7 @@
     "zod": "^3.23.6"
   },
   "devDependencies": {
-    "@aiag/typescript-config": "workspace:*",
+    "@aiag/typescript-config": "*",
     "@types/node": "^20.12.7",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",

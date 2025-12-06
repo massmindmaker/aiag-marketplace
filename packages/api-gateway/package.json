@@ -17,11 +17,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@aiag/database": "workspace:*",
+    "@aiag/database": "*",
     "hono": "^4.3.2"
   },
   "devDependencies": {
-    "@aiag/typescript-config": "workspace:*",
+    "@aiag/typescript-config": "*",
     "@types/node": "^20.12.7",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5"
