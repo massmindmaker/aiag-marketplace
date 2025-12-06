@@ -18,7 +18,7 @@ const modelTypeConfig: Record<string, { icon: string; color: string; label: stri
   multimodal: { icon: '🌐', color: 'bg-orange-100 text-orange-800', label: 'Multimodal' },
 };
 
-async function getModels(type?: string, search?: string) {
+async function getModels(type?: string, _search?: string) {
   const models = await db.query.aiModels.findMany({
     where: and(
       eq(aiModels.isPublic, true),
