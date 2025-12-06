@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx turbo build --filter=@aiag/web",
+  "buildCommand": "DATABASE_URL=postgresql://build:build@localhost:5432/build npx turbo build --filter=@aiag/web",
   "installCommand": "npm install",
   "framework": "nextjs",
   "outputDirectory": "apps/web/.next"
