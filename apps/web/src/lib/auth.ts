@@ -1,4 +1,5 @@
-import NextAuth, { type NextAuthResult } from 'next-auth';
+import NextAuth from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
@@ -12,7 +13,7 @@ function hashPassword(password: string): string {
   return createHash('sha256').update(password).digest('hex');
 }
 
-const nextAuth: NextAuthResult = NextAuth({
+const authConfig: NextAuthConfig = {
   adapter: DrizzleAdapter(db),
   session: {
     strategy: 'jwt',
@@ -88,9 +89,11 @@ const nextAuth: NextAuthResult = NextAuth({
       return session;
     },
   },
-});
+};
 
-export const { handlers, signIn, signOut, auth } = nextAuth;
+const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+
+export { handlers, signIn, signOut, auth };
 
 // Type augmentation for session
 declare module 'next-auth' {
