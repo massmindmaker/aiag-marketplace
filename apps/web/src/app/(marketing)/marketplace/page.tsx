@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Search, Star, Zap, Clock } from 'lucide-react';
 import { db, desc, eq, and } from '@/lib/db';
-import { aiModels, users, organizations } from '@aiag/database/schema';
+import { aiModels } from '@aiag/database/schema';
 import { formatNumber } from '@/lib/utils';
 
 // Model type icons and colors
