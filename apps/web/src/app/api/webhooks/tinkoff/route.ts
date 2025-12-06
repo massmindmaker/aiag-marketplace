@@ -159,9 +159,8 @@ async function handleRefund(
 
   if (!user) return;
 
-  const _currentBalance = parseFloat(user.balance || '0');
   // Note: For refunds, we might want to reduce the balance if the original payment increased it
-  // This depends on business logic - _currentBalance available if needed
+  // This depends on business logic - user.balance available if needed
 
   await db
     .update(payments)
