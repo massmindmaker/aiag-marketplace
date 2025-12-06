@@ -1,8 +1,7 @@
-import {
+import type {
   TinkoffConfig,
   InitPaymentRequest,
   InitPaymentResponse,
-  GetStateRequest,
   GetStateResponse,
   ConfirmRequest,
   ConfirmResponse,
