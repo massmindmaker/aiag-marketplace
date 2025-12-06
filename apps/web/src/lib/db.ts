@@ -6,8 +6,17 @@ const globalForDb = globalThis as unknown as {
 };
 
 function getDb(): Database {
+  // During build time, DATABASE_URL might not be set
+  // Return a placeholder that throws at runtime if actually used
   if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    // Create a mock that throws on actual usage
+    return new Proxy({} as Database, {
+      get(_, prop) {
+        throw new Error(
+          `Database not initialized. DATABASE_URL environment variable is not set. Tried to access: ${String(prop)}`
+        );
+      },
+    });
   }
 
   if (!globalForDb.db) {

@@ -4,6 +4,9 @@ import { db, eq } from '@/lib/db';
 import { payments, subscriptions, balanceTransactions, users } from '@aiag/database/schema';
 import type { WebhookNotification } from '@aiag/tinkoff';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const payload = (await request.json()) as WebhookNotification;
