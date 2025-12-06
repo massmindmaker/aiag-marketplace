@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Search, Filter, Star, Zap, Clock } from 'lucide-react';
+import { Search, Star, Zap, Clock } from 'lucide-react';
 import { db, desc, eq, and } from '@/lib/db';
 import { aiModels, users, organizations } from '@aiag/database/schema';
 import { formatNumber } from '@/lib/utils';
