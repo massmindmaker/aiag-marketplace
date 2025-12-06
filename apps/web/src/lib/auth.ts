@@ -13,7 +13,6 @@ function hashPassword(password: string): string {
 }
 
 const nextAuth: NextAuthResult = NextAuth({
-  // @ts-expect-error - DrizzleAdapter types are stricter than needed
   adapter: DrizzleAdapter(db),
   session: {
     strategy: 'jwt',
