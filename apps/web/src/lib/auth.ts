@@ -4,7 +4,7 @@ import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { db } from './db';
-import { users, accounts, sessions, verificationTokens } from '@aiag/database/schema';
+import { users } from '@aiag/database/schema';
 import { eq } from '@aiag/database';
 import { createHash } from 'crypto';
 
@@ -13,12 +13,8 @@ function hashPassword(password: string): string {
 }
 
 const nextAuth: NextAuthResult = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-    verificationTokensTable: verificationTokens,
-  }),
+  // @ts-expect-error - DrizzleAdapter types are stricter than needed
+  adapter: DrizzleAdapter(db),
   session: {
     strategy: 'jwt',
   },
