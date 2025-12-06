@@ -1,9 +1,6 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 import * as schema from './schema';
-
-// Configure Neon for serverless environments
-neonConfig.fetchConnectionCache = true;
 
 // Create database client
 export function createDb(connectionString: string) {
@@ -11,7 +8,7 @@ export function createDb(connectionString: string) {
   return drizzle(sql, { schema });
 }
 
-// Create database client for edge runtime
+// Create database client for edge runtime (same as createDb for neon-http)
 export function createEdgeDb(connectionString: string) {
   const sql = neon(connectionString);
   return drizzle(sql, { schema });
