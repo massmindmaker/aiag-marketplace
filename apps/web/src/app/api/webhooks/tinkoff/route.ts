@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tinkoff } from '@/lib/tinkoff';
-import { db, eq } from '@/lib/db';
+import { db } from '@/lib/db';
+import { eq } from '@aiag/database';
 import { payments, subscriptions, balanceTransactions, users } from '@aiag/database/schema';
 import type { WebhookNotification } from '@aiag/tinkoff';
 

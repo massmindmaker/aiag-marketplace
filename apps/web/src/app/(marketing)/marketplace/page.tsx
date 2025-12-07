@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Search, Star, Zap, Clock } from 'lucide-react';
-import { db, desc, eq, and } from '@/lib/db';
+import { db } from '@/lib/db';
+import { desc, eq, and } from '@aiag/database';
 import { aiModels } from '@aiag/database/schema';
 import { formatNumber } from '@/lib/utils';
 

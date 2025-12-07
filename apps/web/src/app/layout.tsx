@@ -1,30 +1,35 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Roboto } from 'next/font/google';
+import ThemeRegistry from '@/theme/ThemeRegistry';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin', 'cyrillic'] });
+const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
+  subsets: ['latin', 'cyrillic'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
-    default: 'AIAG - AI Models Marketplace',
-    template: '%s | AIAG',
+    default: 'AI Aggregator - Маркетплейс алгоритмов ИИ',
+    template: '%s | AI Aggregator',
   },
   description:
-    'Marketplace for AI models - LLM, image generation, audio, video and more. Find, compare and integrate AI APIs.',
+    'Маркетплейс алгоритмов искусственного интеллекта. Алгоритмы ИИ - быстро, просто, недорого.',
   keywords: [
     'AI',
+    'ИИ',
     'API',
     'LLM',
-    'GPT',
-    'image generation',
-    'machine learning',
-    'marketplace',
+    'машинное обучение',
+    'маркетплейс',
+    'алгоритмы',
   ],
-  authors: [{ name: 'AIAG Team' }],
+  authors: [{ name: 'AI Aggregator Team' }],
   openGraph: {
     type: 'website',
     locale: 'ru_RU',
-    siteName: 'AIAG',
+    siteName: 'AI Aggregator',
   },
 };
 
@@ -35,7 +40,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body className={inter.className}>{children}</body>
+      <body className={roboto.className}>
+        <ThemeRegistry>{children}</ThemeRegistry>
+      </body>
     </html>
   );
 }
