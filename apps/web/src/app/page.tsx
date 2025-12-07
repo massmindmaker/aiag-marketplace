@@ -16,6 +16,7 @@ const HeaderBG = styled(Box)(({ theme }) => ({
   backgroundPosition: '40% 50%',
   backgroundBlendMode: 'lighten',
   background: `
+    url("/mlauto_1.gif"),
     repeating-linear-gradient(45deg,rgba(0,0,0,0),rgba(0,0,0,0) 2px,rgba(255,255,255,0.0) 2px,rgba(255,255,255,0.7) 7px),
     repeating-linear-gradient(-45deg,rgba(0,0,0,0),rgba(0,0,0,0) 2px,rgba(255,255,255,0.0) 2px,rgba(255,255,255,0.7) 7px)
   `,

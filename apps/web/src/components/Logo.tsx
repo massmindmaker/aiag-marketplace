@@ -1,7 +1,6 @@
 'use client';
 
 import { Typography, Box } from '@mui/material';
-import Image from 'next/image';
 
 interface LogoProps {
   ismobile?: boolean;
@@ -10,10 +9,11 @@ interface LogoProps {
 
 const Logo = ({ ismobile, long }: LogoProps) => {
   return (
-    <Box sx={{ p: 0 }}>
+    <Box sx={{ p: 0, display: 'flex', alignItems: 'center' }}>
       {ismobile ? (
         <Box>
-          <Image src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
         </Box>
       ) : long ? (
         <Box
@@ -22,18 +22,19 @@ const Logo = ({ ismobile, long }: LogoProps) => {
             flexWrap: 'nowrap',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'end',
+            justifyContent: 'start',
           }}
         >
-          <Image src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
-          <Box flexGrow="1" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
           <Typography sx={{ pl: 2 }} fontWeight="fontWeightBold" variant="h6" color="#222">
             Ai-Aggregator
           </Typography>
         </Box>
       ) : (
-        <Box sx={{ pl: 4 }}>
-          <Image src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
         </Box>
       )}
     </Box>
