@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { styled, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import MainNavbar from './MainNavbar';
@@ -42,11 +41,10 @@ interface MainLayoutProps {
 const MainLayout = ({ children }: MainLayoutProps) => {
   const theme = useTheme();
   const breakpointDownMD = useMediaQuery(theme.breakpoints.down('md'));
-  const [, setMobileNavOpen] = useState(false);
 
   return (
     <MainLayoutRoot>
-      <MainNavbar onMobileNavOpen={() => setMobileNavOpen(true)} />
+      <MainNavbar />
       <MainLayoutWrapper
         sx={{
           paddingBottom: breakpointDownMD ? '48px' : 0,
