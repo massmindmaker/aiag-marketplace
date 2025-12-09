@@ -5,7 +5,7 @@ import { authMiddleware, type AuthMiddlewareOptions } from './middleware/auth';
 import { rateLimitMiddleware, type RateLimitOptions } from './middleware/rate-limit';
 import { loggingMiddleware, timingMiddleware, type LoggingOptions } from './middleware/logging';
 import { proxyRequest, buildUpstreamUrl, prepareUpstreamHeaders } from './proxy';
-import type { GatewayHonoContext, GatewayConfig, EndpointData, SubscriptionData } from './types';
+import type { GatewayEnv, GatewayConfig, EndpointData, SubscriptionData, GatewayContext } from './types';
 
 export interface CreateGatewayOptions {
   config: Partial<GatewayConfig>;
@@ -39,7 +39,7 @@ const defaultConfig: GatewayConfig = {
  */
 export function createGateway(options: CreateGatewayOptions) {
   const config = { ...defaultConfig, ...options.config };
-  const app = new Hono<{ Variables: GatewayHonoContext['Bindings'] }>();
+  const app = new Hono<GatewayEnv>();
 
   // CORS middleware
   app.use(
@@ -97,7 +97,7 @@ export function createGateway(options: CreateGatewayOptions) {
 
   // API proxy route
   app.all('/v1/:model/:endpoint{/.*}?', async (ctx) => {
-    const gateway = ctx.get('gateway') as GatewayHonoContext['Variables']['gateway'];
+    const gateway = ctx.get('gateway') as GatewayContext;
     const modelSlug = ctx.req.param('model');
     const endpointSlug = ctx.req.param('endpoint');
     const subPath = ctx.req.param('0') || '';
@@ -263,6 +263,7 @@ export function createGateway(options: CreateGatewayOptions) {
 export type {
   GatewayConfig,
   GatewayContext,
+  GatewayEnv,
   GatewayHonoContext,
   ApiKeyData,
   SubscriptionData,

@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { createHash } from 'crypto';
-import type { GatewayHonoContext, ApiKeyData } from '../types';
+import type { GatewayEnv, GatewayHonoContext, ApiKeyData } from '../types';
 
 // Hash API key for lookup
 function hashApiKey(key: string): string {
@@ -40,7 +40,7 @@ export interface AuthMiddlewareOptions {
  * Validates API key and adds user context to request
  */
 export function authMiddleware(options: AuthMiddlewareOptions) {
-  return createMiddleware<GatewayHonoContext>(async (ctx, next) => {
+  return createMiddleware<GatewayEnv>(async (ctx, next) => {
     // Extract API key
     const apiKey = extractApiKey(ctx as GatewayHonoContext);
 

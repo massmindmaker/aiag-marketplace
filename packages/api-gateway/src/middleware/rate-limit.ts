@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
-import type { GatewayHonoContext, RateLimitResult } from '../types';
+import type { GatewayEnv, GatewayHonoContext, RateLimitResult } from '../types';
 
 export interface RateLimitStore {
   increment(key: string, windowMs: number): Promise<{ count: number; resetAt: Date }>;
@@ -75,7 +75,7 @@ const defaultOptions: Required<RateLimitOptions> = {
 export function rateLimitMiddleware(options: RateLimitOptions = {}) {
   const opts = { ...defaultOptions, ...options };
 
-  return createMiddleware<GatewayHonoContext>(async (ctx, next) => {
+  return createMiddleware<GatewayEnv>(async (ctx, next) => {
     const gateway = ctx.get('gateway');
     const key = opts.keyGenerator(ctx as GatewayHonoContext);
 

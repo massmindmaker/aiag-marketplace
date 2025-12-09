@@ -6,11 +6,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { db } from './lib/db';
 import { users } from '@aiag/database/schema';
 import { eq } from '@aiag/database';
-import { createHash } from 'crypto';
-
-function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
-}
+import bcrypt from 'bcryptjs';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db),
@@ -54,8 +50,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const passwordHash = hashPassword(password);
-        if (passwordHash !== user.passwordHash) {
+        const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+        if (!isValidPassword) {
           return null;
         }
 

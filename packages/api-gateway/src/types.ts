@@ -60,14 +60,17 @@ export interface GatewayContext {
   };
 }
 
-// Extended Hono context with gateway data
-export type GatewayHonoContext = HonoContext<{
+// Environment type for Hono
+export type GatewayEnv = {
   Variables: {
     gateway: GatewayContext;
     requestId: string;
     startTime: number;
   };
-}>;
+};
+
+// Extended Hono context with gateway data
+export type GatewayHonoContext = HonoContext<GatewayEnv>;
 
 // Rate limit result
 export interface RateLimitResult {

@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory';
-import type { GatewayHonoContext, UsageLogEntry } from '../types';
+import type { GatewayEnv, UsageLogEntry } from '../types';
 
 export interface LoggingOptions {
   logRequest?: (entry: UsageLogEntry) => Promise<void>;
@@ -16,7 +16,7 @@ function generateRequestId(): string {
  * Logging middleware - tracks request/response and logs usage
  */
 export function loggingMiddleware(options: LoggingOptions = {}) {
-  return createMiddleware<GatewayHonoContext>(async (ctx, next) => {
+  return createMiddleware<GatewayEnv>(async (ctx, next) => {
     // Generate request ID and set start time
     const requestId = generateRequestId();
     const startTime = Date.now();
@@ -71,7 +71,7 @@ export function loggingMiddleware(options: LoggingOptions = {}) {
  * Request timing header middleware
  */
 export function timingMiddleware() {
-  return createMiddleware<GatewayHonoContext>(async (ctx, next) => {
+  return createMiddleware<GatewayEnv>(async (ctx, next) => {
     const start = Date.now();
 
     await next();

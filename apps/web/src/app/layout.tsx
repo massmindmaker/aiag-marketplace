@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Roboto } from 'next/font/google';
 import ThemeRegistry from '@/theme/ThemeRegistry';
+import { Providers } from '@/components/providers/Providers';
 import './globals.css';
 
 const roboto = Roboto({
@@ -41,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className={roboto.className}>
-        <ThemeRegistry>{children}</ThemeRegistry>
+        <Providers>
+          <ThemeRegistry>{children}</ThemeRegistry>
+        </Providers>
       </body>
     </html>
   );
