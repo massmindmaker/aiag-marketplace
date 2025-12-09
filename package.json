@@ -11,18 +11,32 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
-    "test": "turbo test",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
     "db:push": "turbo db:push",
     "db:studio": "pnpm --filter @aiag/database db:studio",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "prepare": "playwright install"
   },
   "devDependencies": {
     "@aiag/typescript-config": "*",
+    "@playwright/test": "^1.42.0",
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.3.1",
+    "jsdom": "^24.0.0",
     "prettier": "^3.2.5",
     "turbo": "^2.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^1.3.1"
   },
   "engines": {
     "node": ">=18.0.0"

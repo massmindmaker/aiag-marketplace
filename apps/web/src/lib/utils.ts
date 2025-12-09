@@ -51,3 +51,66 @@ export function getInitials(name: string): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Debounce function
+ */
+export function debounce<T extends (...args: unknown[]) => unknown>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
+/**
+ * Check if we're on the server
+ */
+export const isServer = typeof window === 'undefined';
+
+/**
+ * Check if we're in development
+ */
+export const isDev = process.env.NODE_ENV === 'development';
+
+/**
+ * Safe JSON parse
+ */
+export function safeJsonParse<T>(json: string, fallback: T): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Format relative time (e.g., "2 hours ago")
+ */
+export function formatRelativeTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000);
+
+  const intervals = [
+    { label: 'год', seconds: 31536000 },
+    { label: 'месяц', seconds: 2592000 },
+    { label: 'день', seconds: 86400 },
+    { label: 'час', seconds: 3600 },
+    { label: 'минуту', seconds: 60 },
+    { label: 'секунду', seconds: 1 },
+  ];
+
+  for (const interval of intervals) {
+    const count = Math.floor(diffInSeconds / interval.seconds);
+    if (count >= 1) {
+      return `${count} ${interval.label} назад`;
+    }
+  }
+
+  return 'только что';
+}
