@@ -32,8 +32,20 @@ import {
   Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import MainLayout from '@/components/layout/MainLayout';
+import { TransferWarningBadge } from '@/components/TransferWarningBadge';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+
+// Foreign-hosted orgs that require transborder warning per 152-FZ
+const FOREIGN_ORGS = new Set([
+  'openai',
+  'anthropic',
+  'google',
+  'stability',
+  'meta',
+  'runway',
+  'elevenlabs',
+]);
 
 // Model type configuration
 const modelTypeConfig: Record<string, { icon: string; label: string; color: string }> = {
@@ -495,6 +507,8 @@ export default function ModelDetailPage() {
 
   const typeConfig = modelTypeConfig[model.type] || modelTypeConfig.llm;
   const ownerName = model.organization?.name || model.owner?.name || 'Unknown';
+  const orgSlug = model.organization?.slug || model.owner?.username || '';
+  const isTransborderRoute = FOREIGN_ORGS.has(orgSlug);
 
   return (
     <MainLayout>
@@ -540,6 +554,7 @@ export default function ModelDetailPage() {
                           fontWeight: 600,
                         }}
                       />
+                      {isTransborderRoute && <TransferWarningBadge />}
                     </Box>
                     <Typography variant="body1" sx={{ color: '#666', mb: 2 }}>
                       by {ownerName}
