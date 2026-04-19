@@ -11,8 +11,6 @@ import {
   Typography,
   Paper,
   Divider,
-  Checkbox,
-  FormControlLabel,
   Alert,
   CircularProgress,
   IconButton,
@@ -20,6 +18,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { GitHub as GithubIcon } from '@mui/icons-material';
+import { ConsentCheckbox } from '../../../components/ConsentCheckbox';
 
 function RegisterForm() {
   const router = useRouter();
@@ -34,15 +33,18 @@ function RegisterForm() {
     email: '',
     password: '',
     confirmPassword: '',
-    acceptTerms: false,
   });
   const [fieldErrors, setFieldErrors] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    acceptTerms: '',
   });
+  // 152-FZ (May 2025): three separate consents are required.
+  // Processing + transborder are mandatory; marketing is optional.
+  const [consentProcessing, setConsentProcessing] = useState(false);
+  const [consentTransborder, setConsentTransborder] = useState(false);
+  const [consentMarketing, setConsentMarketing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -63,7 +65,6 @@ function RegisterForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      acceptTerms: '',
     };
     let isValid = true;
 
@@ -103,12 +104,6 @@ function RegisterForm() {
       isValid = false;
     }
 
-    // Terms validation
-    if (!formData.acceptTerms) {
-      errors.acceptTerms = 'Необходимо принять условия';
-      isValid = false;
-    }
-
     setFieldErrors(errors);
     return isValid;
   };
@@ -134,6 +129,9 @@ function RegisterForm() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          consentProcessing,
+          consentTransborder,
+          consentMarketing,
         }),
       });
 
@@ -165,7 +163,7 @@ function RegisterForm() {
   };
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = field === 'acceptTerms' ? e.target.checked : e.target.value;
+    const value = e.target.value;
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear field error on change
     if (fieldErrors[field as keyof typeof fieldErrors]) {
@@ -421,53 +419,56 @@ function RegisterForm() {
             }}
           />
 
-          {/* Accept Terms Checkbox */}
-          <Box>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={formData.acceptTerms}
-                  onChange={handleInputChange('acceptTerms')}
-                  disabled={isLoading !== null}
-                  sx={{
-                    color: fieldErrors.acceptTerms ? '#d32f2f' : '#555',
-                    '&.Mui-checked': {
-                      color: '#00efdf',
-                    },
-                  }}
-                />
-              }
-              label={
-                <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
-                  Я принимаю{' '}
-                  <Link
-                    href="/terms"
-                    style={{ color: '#00efdf', textDecoration: 'none' }}
-                  >
-                    Условия использования
-                  </Link>{' '}
-                  и{' '}
-                  <Link
-                    href="/privacy"
-                    style={{ color: '#00efdf', textDecoration: 'none' }}
-                  >
-                    Политику конфиденциальности
-                  </Link>
-                </Typography>
-              }
+          {/* 152-FZ Consents (May 2025): three separate checkboxes. */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <ConsentCheckbox
+              id="consent-processing"
+              required
+              checked={consentProcessing}
+              onChange={setConsentProcessing}
+              detailsHref="/privacy"
+              label="Я даю согласие на обработку персональных данных в соответствии с 152-ФЗ"
             />
-            {fieldErrors.acceptTerms && (
-              <Typography variant="caption" sx={{ color: '#d32f2f', ml: 4, display: 'block' }}>
-                {fieldErrors.acceptTerms}
-              </Typography>
-            )}
+            <ConsentCheckbox
+              id="consent-transborder"
+              required
+              checked={consentTransborder}
+              onChange={setConsentTransborder}
+              detailsHref="/privacy#transborder"
+              label="Я даю согласие на трансграничную передачу данных (некоторые модели хостятся за рубежом)"
+            />
+            <ConsentCheckbox
+              id="consent-marketing"
+              checked={consentMarketing}
+              onChange={setConsentMarketing}
+              label="Я согласен(на) получать маркетинговые рассылки и новости (необязательно)"
+            />
+            <Typography variant="caption" sx={{ color: '#666', mt: 1 }}>
+              Регистрируясь, вы также принимаете{' '}
+              <Link
+                href="/terms"
+                style={{ color: '#00efdf', textDecoration: 'none' }}
+              >
+                Условия использования
+              </Link>{' '}
+              и{' '}
+              <Link
+                href="/privacy"
+                style={{ color: '#00efdf', textDecoration: 'none' }}
+              >
+                Политику конфиденциальности
+              </Link>
+              .
+            </Typography>
           </Box>
 
           {/* Submit Button */}
           <Button
             type="submit"
             fullWidth
-            disabled={isLoading !== null}
+            disabled={
+              isLoading !== null || !consentProcessing || !consentTransborder
+            }
             sx={{
               py: 1.5,
               mt: 1,
