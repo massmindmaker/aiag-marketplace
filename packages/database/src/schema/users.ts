@@ -56,6 +56,14 @@ export const users = pgTable(
     isBanned: boolean('is_banned').default(false).notNull(),
     banReason: text('ban_reason'),
 
+    // 152-FZ consent fields
+    consentProcessing: boolean('consent_processing').notNull().default(false),
+    consentTransborder: boolean('consent_transborder').notNull().default(false),
+    consentMarketing: boolean('consent_marketing').notNull().default(false),
+    consentTimestamp: timestamp('consent_timestamp', { mode: 'date' }),
+    consentIpAddress: varchar('consent_ip_address', { length: 45 }),
+    consentUserAgent: text('consent_user_agent'),
+
     // Timestamps
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
