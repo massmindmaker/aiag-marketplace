@@ -1,60 +1,19 @@
-'use client';
-
-import { styled, useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
+import * as React from 'react';
 import MainNavbar from './MainNavbar';
-
-const MainLayoutRoot = styled('div')(({ theme }) => ({
-  backgroundColor: theme.palette.background.paper,
-  display: 'flex',
-  height: '100%',
-  overflow: 'hidden',
-  width: '100%',
-}));
-
-const MainLayoutWrapper = styled('div')(({ theme }) => ({
-  display: 'flex',
-  flex: '1 1 auto',
-  overflow: 'hidden',
-  paddingTop: 48,
-  [theme.breakpoints.up('md')]: {
-    paddingBottom: 0,
-  },
-}));
-
-const MainLayoutContainer = styled('div')({
-  display: 'flex',
-  flex: '1 1 auto',
-  overflow: 'hidden',
-});
-
-const MainLayoutContent = styled('div')({
-  flex: '1 1 auto',
-  height: '100%',
-  overflow: 'auto',
-});
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
+/**
+ * Plan 03: shadcn/Tailwind-based layout replacing MUI `styled` version.
+ */
 const MainLayout = ({ children }: MainLayoutProps) => {
-  const theme = useTheme();
-  const breakpointDownMD = useMediaQuery(theme.breakpoints.down('md'));
-
   return (
-    <MainLayoutRoot>
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <MainNavbar />
-      <MainLayoutWrapper
-        sx={{
-          paddingBottom: breakpointDownMD ? '48px' : 0,
-        }}
-      >
-        <MainLayoutContainer>
-          <MainLayoutContent>{children}</MainLayoutContent>
-        </MainLayoutContainer>
-      </MainLayoutWrapper>
-    </MainLayoutRoot>
+      <main className="flex-1">{children}</main>
+    </div>
   );
 };
 

@@ -1,52 +1,64 @@
-import MainLayout from '@/components/layout/MainLayout';
-import { Box, Typography } from '@mui/material';
+import Link from 'next/link';
 
 export const metadata = { title: 'Политика обработки ПДн — AI-Aggregator' };
 
 export default function PrivacyPage() {
   return (
-    <MainLayout>
-      <Box sx={{ maxWidth: 800, mx: 'auto', p: 4 }}>
-        <Typography variant="h3" sx={{ mb: 3 }}>
-          Политика обработки персональных данных
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          Редакция от 2026-04-18. Оператор: ИП Боборов, ОГРНИП 0000000000.
-        </Typography>
-        <Typography variant="h5" sx={{ mt: 4, mb: 2 }} id="processing">
-          1. Категории обрабатываемых ПДн
-        </Typography>
-        <Typography variant="body1">
-          Email, имя, IP-адрес, user-agent, содержимое API-запросов (prompts),
-          платёжные данные (хешированные).
-        </Typography>
-        <Typography variant="h5" sx={{ mt: 4, mb: 2 }} id="transborder">
-          2. Трансграничная передача
-        </Typography>
-        <Typography variant="body1">
-          При использовании моделей, размещённых на зарубежных серверах
-          (OpenAI, Anthropic и др.), ваши промпты могут передаваться в США
-          или страны ЕС. Для критичных данных используйте модели с меткой
-          🛡 «Хостинг РФ».
-        </Typography>
-        <Typography variant="h5" sx={{ mt: 4, mb: 2 }} id="retention">
-          3. Сроки хранения
-        </Typography>
-        <Typography variant="body1">
-          Логи запросов — 30 дней (по умолчанию, настраивается в /dashboard/settings).
-          Персональные данные — до отзыва согласия.
-        </Typography>
-        <Typography variant="h5" sx={{ mt: 4, mb: 2 }} id="rights">
-          4. Ваши права
-        </Typography>
-        <Typography variant="body1">
-          Вы можете запросить удаление данных через support@ai-aggregator.ru
-          или отозвать согласие в настройках профиля.
-        </Typography>
-        <Typography variant="caption" sx={{ display: 'block', mt: 4, color: 'text.secondary' }}>
-          Эта страница — стартовая версия. Финальная редакция юриста — Plan 08.
-        </Typography>
-      </Box>
-    </MainLayout>
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-3xl px-6 py-12">
+        <nav className="mb-8 text-sm text-muted-foreground">
+          <Link href="/" className="hover:text-foreground">
+            ← На главную
+          </Link>
+        </nav>
+        <article className="prose prose-invert max-w-none">
+          <h1 className="text-3xl font-bold mb-4">
+            Политика обработки персональных данных
+          </h1>
+          <p className="mb-6 text-muted-foreground">
+            Редакция от 2026-04-18. Оператор: ИП Боборов, ОГРНИП 0000000000.
+          </p>
+
+          <h2 id="processing" className="text-xl font-semibold mt-8 mb-3">
+            1. Категории обрабатываемых ПДн
+          </h2>
+          <p className="mb-4">
+            Email, имя, IP-адрес, user-agent, содержимое API-запросов (prompts),
+            платёжные данные (хешированные).
+          </p>
+
+          <h2 id="transborder" className="text-xl font-semibold mt-8 mb-3">
+            2. Трансграничная передача
+          </h2>
+          <p className="mb-4">
+            При использовании моделей, размещённых на зарубежных серверах
+            (OpenAI, Anthropic и др.), ваши промпты могут передаваться в США
+            или страны ЕС. Для критичных данных используйте модели с меткой
+            🛡 «Хостинг РФ».
+          </p>
+
+          <h2 id="retention" className="text-xl font-semibold mt-8 mb-3">
+            3. Сроки хранения
+          </h2>
+          <p className="mb-4">
+            Логи запросов — 30 дней (по умолчанию, настраивается в
+            /dashboard/settings). Персональные данные — до отзыва согласия.
+          </p>
+
+          <h2 id="rights" className="text-xl font-semibold mt-8 mb-3">
+            4. Ваши права
+          </h2>
+          <p className="mb-4">
+            Вы можете запросить удаление данных через
+            support@ai-aggregator.ru или отозвать согласие в настройках
+            профиля.
+          </p>
+
+          <p className="mt-10 text-xs text-muted-foreground">
+            Эта страница — стартовая версия. Финальная редакция юриста — Plan 08.
+          </p>
+        </article>
+      </div>
+    </main>
   );
 }

@@ -4,21 +4,14 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Paper,
-  Divider,
-  Alert,
-  CircularProgress,
-  IconButton,
-  InputAdornment,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { GitHub as GithubIcon } from '@mui/icons-material';
-import { ConsentCheckbox } from '../../../components/ConsentCheckbox';
+import { Eye, EyeOff, Github, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Card, CardContent } from '@/components/ui/Card';
+import { ConsentCheckbox } from '@/components/ConsentCheckbox';
+import { cn } from '@/lib/utils';
 
 function RegisterForm() {
   const router = useRouter();
@@ -40,8 +33,6 @@ function RegisterForm() {
     password: '',
     confirmPassword: '',
   });
-  // 152-FZ (May 2025): three separate consents are required.
-  // Processing + transborder are mandatory; marketing is optional.
   const [consentProcessing, setConsentProcessing] = useState(false);
   const [consentTransborder, setConsentTransborder] = useState(false);
   const [consentMarketing, setConsentMarketing] = useState(false);
@@ -60,15 +51,9 @@ function RegisterForm() {
   };
 
   const validateForm = () => {
-    const errors = {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    };
+    const errors = { name: '', email: '', password: '', confirmPassword: '' };
     let isValid = true;
 
-    // Name validation
     if (!formData.name.trim()) {
       errors.name = 'Имя обязательно';
       isValid = false;
@@ -77,7 +62,6 @@ function RegisterForm() {
       isValid = false;
     }
 
-    // Email validation
     if (!formData.email.trim()) {
       errors.email = 'Email обязателен';
       isValid = false;
@@ -86,7 +70,6 @@ function RegisterForm() {
       isValid = false;
     }
 
-    // Password validation
     if (!formData.password) {
       errors.password = 'Пароль обязателен';
       isValid = false;
@@ -95,7 +78,6 @@ function RegisterForm() {
       isValid = false;
     }
 
-    // Confirm password validation
     if (!formData.confirmPassword) {
       errors.confirmPassword = 'Подтвердите пароль';
       isValid = false;
@@ -112,19 +94,14 @@ function RegisterForm() {
     e.preventDefault();
     setFormError(null);
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading('credentials');
 
     try {
-      // TODO: Implement actual registration API call
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -142,7 +119,6 @@ function RegisterForm() {
         return;
       }
 
-      // Auto sign in after registration
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
@@ -162,459 +138,318 @@ function RegisterForm() {
     }
   };
 
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear field error on change
-    if (fieldErrors[field as keyof typeof fieldErrors]) {
-      setFieldErrors((prev) => ({ ...prev, [field]: '' }));
-    }
-  };
+  const handleInputChange =
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      if (fieldErrors[field as keyof typeof fieldErrors]) {
+        setFieldErrors((prev) => ({ ...prev, [field]: '' }));
+      }
+    };
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 480, px: 2 }}>
-      <Paper
-        elevation={4}
-        sx={{
-          p: 4,
-          borderRadius: 2,
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-        }}
-      >
-        {/* Error Messages */}
-        {(error || formError) && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error === 'OAuthAccountNotLinked'
-              ? 'Этот email уже связан с другим аккаунтом.'
-              : formError || 'Произошла ошибка. Пожалуйста, попробуйте снова.'}
-          </Alert>
-        )}
+    <div className="w-full max-w-md px-2">
+      <Card className="shadow-lg">
+        <CardContent className="p-8">
+          {(error || formError) && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>
+                {error === 'OAuthAccountNotLinked'
+                  ? 'Этот email уже связан с другим аккаунтом.'
+                  : formError || 'Произошла ошибка. Пожалуйста, попробуйте снова.'}
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* OAuth Buttons */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Button
-            onClick={() => handleOAuthSignIn('github')}
-            disabled={isLoading !== null}
-            variant="outlined"
-            fullWidth
-            startIcon={
-              isLoading === 'github' ? (
-                <CircularProgress size={20} />
-              ) : (
-                <GithubIcon />
-              )
-            }
-            sx={{
-              py: 1.5,
-              border: '1px solid #777',
-              color: '#333',
-              backgroundColor: 'transparent',
-              textTransform: 'none',
-              fontSize: '0.95rem',
-              '&:hover': {
-                border: '1px solid #0ff',
-                backgroundColor: '#fff',
-                boxShadow: '0 2px 8px rgba(0, 255, 255, 0.15)',
-              },
-              '&:disabled': {
-                opacity: 0.5,
-              },
-            }}
-          >
-            Продолжить с GitHub
-          </Button>
+          {/* OAuth Buttons */}
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => handleOAuthSignIn('github')}
+              disabled={isLoading !== null}
+              leftIcon={
+                isLoading === 'github' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Github className="h-4 w-4" />
+                )
+              }
+            >
+              Продолжить с GitHub
+            </Button>
 
-          <Button
-            onClick={() => handleOAuthSignIn('google')}
-            disabled={isLoading !== null}
-            variant="outlined"
-            fullWidth
-            startIcon={
-              isLoading === 'google' ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Box
-                  component="svg"
-                  sx={{ width: 20, height: 20 }}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
-                </Box>
-              )
-            }
-            sx={{
-              py: 1.5,
-              border: '1px solid #777',
-              color: '#333',
-              backgroundColor: 'transparent',
-              textTransform: 'none',
-              fontSize: '0.95rem',
-              '&:hover': {
-                border: '1px solid #0ff',
-                backgroundColor: '#fff',
-                boxShadow: '0 2px 8px rgba(0, 255, 255, 0.15)',
-              },
-              '&:disabled': {
-                opacity: 0.5,
-              },
-            }}
-          >
-            Продолжить с Google
-          </Button>
-        </Box>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => handleOAuthSignIn('google')}
+              disabled={isLoading !== null}
+              leftIcon={
+                isLoading === 'google' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                )
+              }
+            >
+              Продолжить с Google
+            </Button>
+          </div>
 
-        {/* Divider */}
-        <Divider sx={{ my: 3 }}>
-          <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-            ИЛИ ПРОДОЛЖИТЬ С EMAIL
-          </Typography>
-        </Divider>
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                или продолжить с Email
+              </span>
+            </div>
+          </div>
 
-        {/* Registration Form */}
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          {/* Name Field */}
-          <TextField
-            fullWidth
-            id="name"
-            name="name"
-            label="Имя"
-            type="text"
-            autoComplete="name"
-            required
-            value={formData.name}
-            onChange={handleInputChange('name')}
-            error={!!fieldErrors.name}
-            helperText={fieldErrors.name}
-            disabled={isLoading !== null}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: '#0ff',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#00efdf',
-                },
-              },
-            }}
-          />
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="name">Имя</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                value={formData.name}
+                onChange={handleInputChange('name')}
+                disabled={isLoading !== null}
+                error={!!fieldErrors.name}
+              />
+              {fieldErrors.name && (
+                <p className="text-xs text-destructive">{fieldErrors.name}</p>
+              )}
+            </div>
 
-          {/* Email Field */}
-          <TextField
-            fullWidth
-            id="email"
-            name="email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            required
-            value={formData.email}
-            onChange={handleInputChange('email')}
-            error={!!fieldErrors.email}
-            helperText={fieldErrors.email}
-            disabled={isLoading !== null}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: '#0ff',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#00efdf',
-                },
-              },
-            }}
-          />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                disabled={isLoading !== null}
+                error={!!fieldErrors.email}
+              />
+              {fieldErrors.email && (
+                <p className="text-xs text-destructive">{fieldErrors.email}</p>
+              )}
+            </div>
 
-          {/* Password Field */}
-          <TextField
-            fullWidth
-            id="password"
-            name="password"
-            label="Пароль"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="new-password"
-            required
-            value={formData.password}
-            onChange={handleInputChange('password')}
-            error={!!fieldErrors.password}
-            helperText={fieldErrors.password}
-            disabled={isLoading !== null}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Пароль</Label>
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                disabled={isLoading !== null}
+                error={!!fieldErrors.password}
+                rightIcon={
+                  <button
+                    type="button"
                     aria-label="переключить видимость пароля"
                     onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                    size="small"
+                    className="text-muted-foreground hover:text-foreground"
                   >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: '#0ff',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#00efdf',
-                },
-              },
-            }}
-          />
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                }
+              />
+              {fieldErrors.password && (
+                <p className="text-xs text-destructive">{fieldErrors.password}</p>
+              )}
+            </div>
 
-          {/* Confirm Password Field */}
-          <TextField
-            fullWidth
-            id="confirmPassword"
-            name="confirmPassword"
-            label="Подтвердите пароль"
-            type={showConfirmPassword ? 'text' : 'password'}
-            autoComplete="new-password"
-            required
-            value={formData.confirmPassword}
-            onChange={handleInputChange('confirmPassword')}
-            error={!!fieldErrors.confirmPassword}
-            helperText={fieldErrors.confirmPassword}
-            disabled={isLoading !== null}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleInputChange('confirmPassword')}
+                disabled={isLoading !== null}
+                error={!!fieldErrors.confirmPassword}
+                rightIcon={
+                  <button
+                    type="button"
                     aria-label="переключить видимость пароля"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    edge="end"
-                    size="small"
+                    onClick={() =>
+                      setShowConfirmPassword(!showConfirmPassword)
+                    }
+                    className="text-muted-foreground hover:text-foreground"
                   >
-                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: '#0ff',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#00efdf',
-                },
-              },
-            }}
-          />
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                }
+              />
+              {fieldErrors.confirmPassword && (
+                <p className="text-xs text-destructive">
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
+            </div>
 
-          {/* 152-FZ Consents (May 2025): three separate checkboxes. */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <ConsentCheckbox
-              id="consent-processing"
-              required
-              checked={consentProcessing}
-              onChange={setConsentProcessing}
-              detailsHref="/privacy"
-              label="Я даю согласие на обработку персональных данных в соответствии с 152-ФЗ"
-            />
-            <ConsentCheckbox
-              id="consent-transborder"
-              required
-              checked={consentTransborder}
-              onChange={setConsentTransborder}
-              detailsHref="/privacy#transborder"
-              label="Я даю согласие на трансграничную передачу данных (некоторые модели хостятся за рубежом)"
-            />
-            <ConsentCheckbox
-              id="consent-marketing"
-              checked={consentMarketing}
-              onChange={setConsentMarketing}
-              label="Я согласен(на) получать маркетинговые рассылки и новости (необязательно)"
-            />
-            <Typography variant="caption" sx={{ color: '#666', mt: 1 }}>
-              Регистрируясь, вы также принимаете{' '}
-              <Link
-                href="/terms"
-                style={{ color: '#00efdf', textDecoration: 'none' }}
-              >
-                Условия использования
-              </Link>{' '}
-              и{' '}
-              <Link
-                href="/privacy"
-                style={{ color: '#00efdf', textDecoration: 'none' }}
-              >
-                Политику конфиденциальности
-              </Link>
-              .
-            </Typography>
-          </Box>
+            {/* 152-FZ Consents */}
+            <div className="flex flex-col gap-3 mt-2">
+              <ConsentCheckbox
+                id="consent-processing"
+                required
+                checked={consentProcessing}
+                onChange={setConsentProcessing}
+                detailsHref="/privacy"
+                label="Я даю согласие на обработку персональных данных в соответствии с 152-ФЗ"
+              />
+              <ConsentCheckbox
+                id="consent-transborder"
+                required
+                checked={consentTransborder}
+                onChange={setConsentTransborder}
+                detailsHref="/privacy#transborder"
+                label="Я даю согласие на трансграничную передачу данных (некоторые модели хостятся за рубежом)"
+              />
+              <ConsentCheckbox
+                id="consent-marketing"
+                checked={consentMarketing}
+                onChange={setConsentMarketing}
+                label="Я согласен(на) получать маркетинговые рассылки и новости (необязательно)"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Регистрируясь, вы также принимаете{' '}
+                <Link
+                  href="/terms"
+                  className="text-primary hover:underline"
+                >
+                  Условия использования
+                </Link>{' '}
+                и{' '}
+                <Link
+                  href="/privacy"
+                  className="text-primary hover:underline"
+                >
+                  Политику конфиденциальности
+                </Link>
+                .
+              </p>
+            </div>
 
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            fullWidth
-            disabled={
-              isLoading !== null || !consentProcessing || !consentTransborder
-            }
-            sx={{
-              py: 1.5,
-              mt: 1,
-              border: '1px solid #00efdf',
-              borderRadius: '5px',
-              color: '#000',
-              textTransform: 'none',
-              fontSize: '1rem',
-              fontWeight: 500,
-              background: 'linear-gradient(90deg, rgba(150, 246, 215, 1) 0%, rgba(153, 230, 231, 1) 100%)',
-              boxShadow: '0 2px 8px rgba(0, 239, 223, 0.2)',
-              '&:hover': {
-                border: '1px solid #0ff',
-                color: '#000',
-                background: '#fff',
-                boxShadow: '0 4px 16px rgba(0, 255, 255, 0.3)',
-              },
-              '&:disabled': {
-                opacity: 0.6,
-              },
-            }}
-          >
-            {isLoading === 'credentials' ? (
-              <CircularProgress size={24} sx={{ color: '#000' }} />
-            ) : (
-              'Зарегистрироваться'
-            )}
-          </Button>
-        </Box>
-      </Paper>
-    </Box>
+            {/* Submit */}
+            <Button
+              type="submit"
+              className={cn('w-full mt-2')}
+              size="lg"
+              disabled={
+                isLoading !== null || !consentProcessing || !consentTransborder
+              }
+              loading={isLoading === 'credentials'}
+            >
+              Зарегистрироваться
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
 function RegisterFormSkeleton() {
   return (
-    <Box sx={{ width: '100%', maxWidth: 480, px: 2 }}>
-      <Paper
-        elevation={4}
-        sx={{
-          p: 4,
-          borderRadius: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={{ height: 48, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 48, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 24, bgcolor: '#f5f5f5', borderRadius: 1, width: '60%', mx: 'auto', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 56, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 56, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 56, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 56, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 40, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Box sx={{ height: 48, bgcolor: '#f5f5f5', borderRadius: 1, animation: 'pulse 1.5s ease-in-out infinite' }} />
-        </Box>
-      </Paper>
-    </Box>
+    <div className="w-full max-w-md px-2">
+      <Card>
+        <CardContent className="p-8">
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-12 rounded-md bg-muted animate-pulse"
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: '#f8f8f8',
-        py: 4,
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: 480 }}>
-        {/* Logo & Header */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <Typography
-              variant="h3"
-              component="span"
-              sx={{
-                fontWeight: 700,
-                color: '#555',
-                fontSize: '2rem',
-              }}
-            >
-              AIAG
-            </Typography>
+    <div className="min-h-screen flex items-center justify-center bg-background py-8">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <span className="text-3xl font-bold text-foreground">
+              AI<span className="text-primary">AG</span>
+            </span>
           </Link>
-          <Typography
-            variant="h5"
-            sx={{
-              mt: 3,
-              fontWeight: 600,
-              color: '#333',
-              fontSize: '1.5rem',
-            }}
-          >
+          <h1 className="mt-6 text-2xl font-semibold text-foreground">
             Создать аккаунт
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              mt: 1,
-              color: '#666',
-              fontSize: '0.95rem',
-            }}
-          >
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
             Уже есть аккаунт?{' '}
-            <Link
-              href="/login"
-              style={{
-                color: '#00efdf',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
+            <Link href="/login" className="text-primary hover:underline">
               Войти
             </Link>
-          </Typography>
-        </Box>
+          </p>
+        </div>
 
         <Suspense fallback={<RegisterFormSkeleton />}>
           <RegisterForm />
         </Suspense>
 
-        {/* Footer */}
-        <Typography
-          variant="caption"
-          sx={{
-            display: 'block',
-            textAlign: 'center',
-            mt: 3,
-            color: '#999',
-            fontSize: '0.8rem',
-          }}
-        >
+        <p className="text-center text-xs text-muted-foreground mt-6">
           При регистрации вы соглашаетесь с нашими{' '}
-          <Link href="/terms" style={{ color: '#00efdf', textDecoration: 'none' }}>
+          <Link href="/terms" className="text-primary hover:underline">
             Условиями использования
           </Link>{' '}
           и{' '}
-          <Link href="/privacy" style={{ color: '#00efdf', textDecoration: 'none' }}>
+          <Link href="/privacy" className="text-primary hover:underline">
             Политикой конфиденциальности
           </Link>
-        </Typography>
-      </Box>
-    </Box>
+        </p>
+      </div>
+    </div>
   );
 }

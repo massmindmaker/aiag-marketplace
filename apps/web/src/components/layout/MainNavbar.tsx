@@ -3,236 +3,136 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  AppBar,
-  Box,
-  IconButton,
-  Toolbar,
-  Tabs,
-  Tab,
-  useTheme,
-  useMediaQuery,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Typography,
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import InputIcon from '@mui/icons-material/Input';
-import CloseIcon from '@mui/icons-material/Close';
-import HomeIcon from '@mui/icons-material/Home';
-import StoreIcon from '@mui/icons-material/Store';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
-import DescriptionIcon from '@mui/icons-material/Description';
-import LoginIcon from '@mui/icons-material/Login';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import Logo from '../Logo';
-
+import { Menu, X, Home, Store, CreditCard, FileText, LogIn, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { cn } from '@/lib/utils';
 
 const mainMenu = [
-  { title: 'Маркетплейс', mobiletitle: 'Маркет', pathname: '/marketplace', authorized: false },
-  { title: 'Конкурсы', mobiletitle: 'Конкурсы', pathname: '/contests', authorized: false },
-  { title: 'Документация', mobiletitle: 'Доки', pathname: '/docs', authorized: false },
+  { title: 'Маркетплейс', href: '/marketplace' },
+  { title: 'Тарифы', href: '/pricing' },
+  { title: 'Документация', href: '/docs' },
 ];
 
-const drawerMenuItems = [
-  { title: 'Главная', pathname: '/', icon: HomeIcon },
-  { title: 'Маркетплейс', pathname: '/marketplace', icon: StoreIcon },
-  { title: 'Тарифы', pathname: '/pricing', icon: CreditCardIcon },
-  { title: 'Документация', pathname: '/docs', icon: DescriptionIcon },
+const drawerItems = [
+  { title: 'Главная', href: '/', icon: Home },
+  { title: 'Маркетплейс', href: '/marketplace', icon: Store },
+  { title: 'Тарифы', href: '/pricing', icon: CreditCard },
+  { title: 'Документация', href: '/docs', icon: FileText },
+  { title: 'Войти', href: '/login', icon: LogIn },
+  { title: 'Регистрация', href: '/register', icon: UserPlus },
 ];
 
-const drawerAuthItems = [
-  { title: 'Войти', pathname: '/login', icon: LoginIcon },
-  { title: 'Регистрация', pathname: '/register', icon: PersonAddIcon },
-];
-
+/**
+ * Plan 03: shadcn/Tailwind-based navbar (migrated from MUI AppBar + Tabs + Drawer).
+ */
 const MainNavbar = () => {
-  const theme = useTheme();
   const pathname = usePathname();
-  const breakpointDownMD = useMediaQuery(theme.breakpoints.down('md'));
-  const [tabValue, setTabValue] = useState<number | false>(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  const handleDrawerOpen = () => {
-    setDrawerOpen(true);
-  };
-
-  const handleDrawerClose = () => {
-    setDrawerOpen(false);
-  };
-
-  const isHomepage = pathname === '/';
-
   return (
-    <AppBar
-      color="secondary"
-      elevation={0}
-      sx={{
-        p: 0,
-        borderBottom: 1,
-        borderColor: '#fff',
-        backgroundColor: '#fff',
-      }}
-    >
-      <Box sx={{ height: '5px' }} />
-      <Toolbar variant="dense">
-        <Link href="/" onClick={() => setTabValue(false)}>
-          <Logo long={!isHomepage && !breakpointDownMD} ismobile={breakpointDownMD} />
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center px-4 md:px-6 gap-4">
+        <Link
+          href="/"
+          className="font-mono font-bold tracking-tight text-foreground"
+        >
+          ai-aggregator<span className="text-primary">.ru</span>
         </Link>
 
-        <Box sx={{ flexGrow: 1 }} />
-
-        <Tabs
-          value={tabValue}
-          onChange={handleChange}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="standard"
-        >
-          {mainMenu.map((item, index) => (
-            <Tab
-              key={index}
-              style={{
-                minWidth: `${breakpointDownMD ? item.mobiletitle.length : item.title.length * 0.8}em`,
-                paddingInline: '1em',
-              }}
-              label={breakpointDownMD ? item.mobiletitle : item.title}
-              value={index}
-              component={Link}
-              href={item.pathname}
-            />
+        <nav className="hidden md:flex items-center gap-6 ms-8 text-sm">
+          {mainMenu.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'transition-colors hover:text-foreground',
+                pathname === item.href
+                  ? 'text-foreground font-medium'
+                  : 'text-muted-foreground'
+              )}
+            >
+              {item.title}
+            </Link>
           ))}
-        </Tabs>
+        </nav>
 
-        <Box sx={{ display: { xs: 'none', md: 'inherit' } }}>
-          <IconButton color="inherit" component={Link} href="/login">
-            <InputIcon />
-          </IconButton>
-        </Box>
+        <div className="ms-auto flex items-center gap-2">
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
+          <div className="hidden md:flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/login">Войти</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/register">Регистрация</Link>
+            </Button>
+          </div>
+          <button
+            type="button"
+            aria-label="Открыть меню"
+            className="md:hidden p-2 rounded-md hover:bg-secondary transition-colors"
+            onClick={() => setDrawerOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
 
-        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-          <IconButton color="inherit" onClick={handleDrawerOpen}>
-            <MenuIcon />
-          </IconButton>
-        </Box>
-      </Toolbar>
-
-      {/* Mobile Drawer Menu */}
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={handleDrawerClose}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: 280,
-            backgroundColor: '#fff',
-          },
-        }}
-        transitionDuration={{
-          enter: 300,
-          exit: 250,
-        }}
-      >
-        {/* Drawer Header */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-          }}
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal="true"
         >
-          <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-            Меню
-          </Typography>
-          <IconButton onClick={handleDrawerClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-
-        {/* Main Menu Items */}
-        <List sx={{ pt: 0 }}>
-          {drawerMenuItems.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <ListItem
-                key={index}
-                component={Link}
-                href={item.pathname}
-                onClick={handleDrawerClose}
-                sx={{
-                  py: 1.5,
-                  px: 2,
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                  transition: 'background-color 0.2s',
-                }}
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <aside className="absolute inset-y-0 end-0 w-72 bg-card border-s border-border shadow-xl flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <span className="font-semibold">Меню</span>
+              <button
+                type="button"
+                aria-label="Закрыть меню"
+                className="p-2 rounded-md hover:bg-secondary transition-colors"
+                onClick={() => setDrawerOpen(false)}
               >
-                <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
-                  <Icon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.title}
-                  primaryTypographyProps={{
-                    fontWeight: pathname === item.pathname ? 600 : 400,
-                    color: pathname === item.pathname ? 'primary.main' : 'text.primary',
-                  }}
-                />
-              </ListItem>
-            );
-          })}
-        </List>
-
-        <Divider sx={{ my: 1 }} />
-
-        {/* Auth Items */}
-        <List sx={{ pt: 0 }}>
-          {drawerAuthItems.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <ListItem
-                key={index}
-                component={Link}
-                href={item.pathname}
-                onClick={handleDrawerClose}
-                sx={{
-                  py: 1.5,
-                  px: 2,
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                  transition: 'background-color 0.2s',
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
-                  <Icon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.title}
-                  primaryTypographyProps={{
-                    fontWeight: pathname === item.pathname ? 600 : 400,
-                    color: pathname === item.pathname ? 'primary.main' : 'text.primary',
-                  }}
-                />
-              </ListItem>
-            );
-          })}
-        </List>
-      </Drawer>
-    </AppBar>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <ul className="flex flex-col p-2">
+              {drawerItems.map((item) => {
+                const Icon = item.icon;
+                const active = pathname === item.href;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setDrawerOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
+                        active
+                          ? 'bg-secondary text-primary font-medium'
+                          : 'text-foreground hover:bg-secondary'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.title}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-auto p-4 border-t border-border">
+              <ThemeToggle />
+            </div>
+          </aside>
+        </div>
+      )}
+    </header>
   );
 };
 

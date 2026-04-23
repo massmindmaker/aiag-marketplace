@@ -1,3 +1,7 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -19,9 +23,8 @@ const nextConfig = {
     ],
   },
   serverExternalPackages: ['@neondatabase/serverless'],
-  // Vercel deployment optimizations
   poweredByHeader: false,
   compress: true,
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
