@@ -76,6 +76,8 @@ export {
   DropdownMenuRadioGroup,
 } from './DropdownMenu';
 
+export { Toaster, toast } from './Sonner';
+
 export {
   Select,
   SelectGroup,

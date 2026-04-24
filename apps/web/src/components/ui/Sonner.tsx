@@ -1,0 +1,35 @@
+'use client';
+
+import { useTheme } from 'next-themes';
+import { Toaster as SonnerToaster, type ToasterProps } from 'sonner';
+
+/**
+ * Sonner-based <Toaster /> wired to next-themes so the toast palette
+ * follows the active theme. Mount once near the app root (e.g. inside
+ * the Providers tree).
+ */
+export function Toaster({ ...props }: ToasterProps) {
+  const { theme = 'system' } = useTheme();
+
+  return (
+    <SonnerToaster
+      theme={theme as ToasterProps['theme']}
+      className="toaster group"
+      toastOptions={{
+        classNames: {
+          toast:
+            'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
+          description: 'group-[.toast]:text-muted-foreground',
+          actionButton:
+            'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
+          cancelButton:
+            'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
+        },
+      }}
+      {...props}
+    />
+  );
+}
+
+// Re-export the imperative `toast` helper for convenience.
+export { toast } from 'sonner';
