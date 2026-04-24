@@ -496,6 +496,26 @@ export function getAllOrgs(): Array<{ slug: string; name: string; count: number 
   return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
 
+/**
+ * Find up to `limit` catalog entries related to the given model.
+ * Ranking: same type first, then shared tags, excluding the source model.
+ */
+export function findRelatedModels(
+  model: CatalogModel,
+  limit = 4
+): CatalogModel[] {
+  const scored = CATALOG.filter((m) => m.slug !== model.slug).map((m) => {
+    const typeScore = m.type === model.type ? 10 : 0;
+    const sharedTags = m.tags.filter((t) => model.tags.includes(t)).length;
+    const hostingScore = m.hostingRegion === model.hostingRegion ? 1 : 0;
+    return { m, score: typeScore + sharedTags * 2 + hostingScore };
+  });
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((s) => s.m);
+}
+
 export function getAllTags(): Array<{ tag: string; count: number }> {
   const map = new Map<string, number>();
   for (const m of CATALOG) {

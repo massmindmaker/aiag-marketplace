@@ -1,20 +1,7 @@
-'use client';
-
-import { useState, useMemo } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import {
-  ArrowLeft,
-  Zap,
-  Users,
-  Code,
-  Copy,
-  Check,
-  Play,
-  Star,
-  Clock,
-  Code2,
-} from 'lucide-react';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, Clock, Play, Code2, Shield } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { TransferWarningBadge } from '@/components/TransferWarningBadge';
 import { Button } from '@/components/ui/Button';
@@ -28,455 +15,397 @@ import {
 } from '@/components/ui/Tabs';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/Tooltip';
-import { cn } from '@/lib/utils';
+  getAllModels,
+  getModelByOrgAndSlug,
+  findRelatedModels,
+  isForeignHosted,
+  MODEL_TYPE_LABEL_RU,
+  type CatalogModel,
+} from '@/lib/marketplace/catalog';
+import { formatPriceLabel } from '@/lib/marketplace/pricing-calc';
+import { ModelCard } from '@/components/marketplace/ModelCard';
+import { CodeExampleTabs } from '@/components/marketplace/CodeExampleTabs';
 
-// Foreign-hosted orgs that require transborder warning per 152-FZ
-const FOREIGN_ORGS = new Set([
-  'openai',
-  'anthropic',
-  'google',
-  'stability',
-  'meta',
-  'runway',
-  'elevenlabs',
-]);
-
-const modelTypeConfig: Record<
-  string,
-  { icon: string; label: string; color: string }
-> = {
-  llm: { icon: '💬', label: 'LLM', color: 'bg-primary/20 text-primary' },
-  image: { icon: '🎨', label: 'Изображения', color: 'bg-pink-500/20 text-pink-400' },
-  audio: { icon: '🎵', label: 'Аудио', color: 'bg-purple-500/20 text-purple-400' },
-  video: { icon: '🎬', label: 'Видео', color: 'bg-orange-500/20 text-orange-400' },
-  embedding: { icon: '🔢', label: 'Эмбеддинги', color: 'bg-emerald-500/20 text-emerald-400' },
-  code: { icon: '💻', label: 'Код', color: 'bg-blue-500/20 text-blue-400' },
-  'speech-to-text': { icon: '🎤', label: 'STT', color: 'bg-pink-500/20 text-pink-400' },
-  'text-to-speech': { icon: '🔊', label: 'TTS', color: 'bg-fuchsia-500/20 text-fuchsia-400' },
-  multimodal: { icon: '🌐', label: 'Мультимодальные', color: 'bg-yellow-500/20 text-yellow-400' },
-};
-
-// Mock models data
-const mockModels = [
-  {
-    id: '1',
-    name: 'GPT-4 Turbo',
-    slug: 'gpt-4-turbo',
-    type: 'llm',
-    shortDescription: 'Самая мощная языковая модель от OpenAI',
-    description: `GPT-4 Turbo — это передовая языковая модель с улучшенными возможностями рассуждения, понимания контекста и генерации текста.
-
-## Возможности
-- Расширенный контекст до 128K токенов
-- Улучшенное следование инструкциям
-- Более актуальные знания
-- Поддержка vision
-
-## Применение
-- Чат-боты и виртуальные ассистенты
-- Анализ и суммаризация документов
-- Генерация контента`,
-    avgRating: 4.9,
-    totalRequests: 1500000,
-    totalSubscribers: 12500,
-    pricingType: 'paid',
-    tags: ['текст', 'генерация', 'чат', 'анализ', 'vision'],
-    organization: { name: 'OpenAI', slug: 'openai' },
-    pricing: { input: 0.01, output: 0.03, unit: '1K токенов' },
-    endpoints: [
-      { method: 'POST', path: '/v1/chat/completions', description: 'Генерация ответа' },
-    ],
-  },
-  {
-    id: '2',
-    name: 'DALL-E 3',
-    slug: 'dalle-3',
-    type: 'image',
-    shortDescription: 'Революционная модель генерации изображений',
-    description: `DALL-E 3 — модель генерации изображений с невероятной детализацией и точностью следования промпту.
-
-## Возможности
-- Высокое разрешение до 1024x1024
-- Точное следование промптам`,
-    avgRating: 4.8,
-    totalRequests: 890000,
-    totalSubscribers: 8900,
-    pricingType: 'paid',
-    tags: ['изображения', 'генерация', 'искусство', 'дизайн'],
-    organization: { name: 'OpenAI', slug: 'openai' },
-    pricing: { input: 0.04, output: 0.04, unit: 'изображение' },
-    endpoints: [
-      { method: 'POST', path: '/v1/images/generations', description: 'Генерация изображения' },
-    ],
-  },
-  {
-    id: '3',
-    name: 'Whisper Large',
-    slug: 'whisper-large',
-    type: 'speech-to-text',
-    shortDescription: 'Высокоточная модель распознавания речи',
-    description: 'Whisper Large — модель распознавания речи.',
-    avgRating: 4.7,
-    totalRequests: 650000,
-    totalSubscribers: 7200,
-    pricingType: 'free',
-    tags: ['аудио', 'транскрипция', 'речь'],
-    organization: { name: 'OpenAI', slug: 'openai' },
-    pricing: { input: 0, output: 0, unit: 'минута' },
-    endpoints: [
-      { method: 'POST', path: '/v1/audio/transcriptions', description: 'Транскрипция аудио' },
-    ],
-  },
-  {
-    id: '4',
-    name: 'Claude 3.5 Sonnet',
-    slug: 'claude-35-sonnet',
-    type: 'llm',
-    shortDescription: 'Продвинутая языковая модель от Anthropic',
-    description: 'Claude 3.5 Sonnet — продвинутая языковая модель.',
-    avgRating: 4.9,
-    totalRequests: 1200000,
-    totalSubscribers: 11000,
-    pricingType: 'paid',
-    tags: ['текст', 'ассистент', 'анализ', 'код'],
-    organization: { name: 'Anthropic', slug: 'anthropic' },
-    pricing: { input: 0.003, output: 0.015, unit: '1K токенов' },
-    endpoints: [
-      { method: 'POST', path: '/v1/messages', description: 'Отправка сообщения' },
-    ],
-  },
-  {
-    id: '5',
-    name: 'Stable Diffusion XL',
-    slug: 'sdxl',
-    type: 'image',
-    shortDescription: 'Мощная open-source модель для генерации изображений',
-    description: 'Stable Diffusion XL.',
-    avgRating: 4.6,
-    totalRequests: 2100000,
-    totalSubscribers: 15800,
-    pricingType: 'free',
-    tags: ['изображения', 'open-source'],
-    organization: { name: 'Stability AI', slug: 'stability' },
-    pricing: { input: 0, output: 0, unit: 'изображение' },
-    endpoints: [
-      { method: 'POST', path: '/v1/generate', description: 'Генерация изображения' },
-    ],
-  },
-];
-
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toString();
-};
-
-function CodeExample({
-  endpoint,
-}: {
-  endpoint: { method: string; path: string; description: string };
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const curlExample = `curl -X ${endpoint.method} "https://api.aiag.ru${endpoint.path}" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "model": "model-id",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'`;
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(curlExample);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="relative rounded-lg border border-border bg-secondary p-4">
-      <div className="flex items-center justify-between mb-2">
-        <Badge
-          className={cn(
-            'font-semibold',
-            endpoint.method === 'POST'
-              ? 'bg-green-600 text-white'
-              : 'bg-blue-600 text-white'
-          )}
-        >
-          {endpoint.method}
-        </Badge>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="text-muted-foreground hover:text-foreground p-1 rounded"
-                aria-label="Копировать"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {copied ? 'Скопировано!' : 'Копировать'}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-      <pre className="font-mono text-xs text-foreground/80 overflow-auto whitespace-pre-wrap break-all">
-        {curlExample}
-      </pre>
-    </div>
-  );
+interface RouteParams {
+  params: { org: string; model: string };
 }
 
-export default function ModelDetailPage() {
-  const params = useParams();
-  const org = params?.org as string;
-  const modelSlug = params?.model as string;
+export const revalidate = 300;
+export const dynamicParams = true;
 
-  const model = useMemo(() => {
-    return mockModels.find((m) => {
-      const modelOrg = m.organization?.slug;
-      return modelOrg === org && m.slug === modelSlug;
-    });
-  }, [org, modelSlug]);
+export async function generateStaticParams() {
+  return getAllModels().map((m) => ({
+    org: m.orgSlug,
+    model: m.modelSlug,
+  }));
+}
 
+export async function generateMetadata({
+  params,
+}: RouteParams): Promise<Metadata> {
+  const model = getModelByOrgAndSlug(params.org, params.model);
   if (!model) {
-    return (
-      <MainLayout>
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <Alert variant="destructive" className="mb-8">
-            <AlertDescription>Модель не найдена</AlertDescription>
-          </Alert>
-          <Button asChild variant="outline" leftIcon={<ArrowLeft className="h-4 w-4" />}>
-            <Link href="/marketplace">Вернуться в маркетплейс</Link>
-          </Button>
-        </div>
-      </MainLayout>
-    );
+    return { title: 'Модель не найдена — AI Aggregator' };
   }
+  const title = `${model.name} API — ${model.orgName} | AI Aggregator`;
+  return {
+    title,
+    description: model.shortDescription,
+    openGraph: {
+      title,
+      description: model.shortDescription,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: model.shortDescription,
+    },
+    alternates: {
+      canonical: `/marketplace/${params.org}/${params.model}`,
+    },
+  };
+}
 
-  const typeConfig = modelTypeConfig[model.type] || modelTypeConfig.llm;
-  const ownerName = model.organization?.name || 'Unknown';
-  const orgSlug = model.organization?.slug || '';
-  const isTransborderRoute = FOREIGN_ORGS.has(orgSlug);
+const TYPE_ICON: Record<string, string> = {
+  llm: '💬',
+  image: '🎨',
+  audio: '🎵',
+  video: '🎬',
+  embedding: '🔢',
+  code: '💻',
+  'speech-to-text': '🎤',
+  'text-to-speech': '🔊',
+  multimodal: '🌐',
+};
+
+function buildProductJsonLd(model: CatalogModel) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: model.name,
+    description: model.description,
+    brand: {
+      '@type': 'Brand',
+      name: model.orgName,
+    },
+    category: MODEL_TYPE_LABEL_RU[model.type],
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'RUB',
+      price: model.pricing.inputPer1k ?? model.pricing.perImage ?? model.pricing.perMinute ?? model.pricing.perSecond ?? 0,
+      availability: 'https://schema.org/InStock',
+      url: `https://aiag.ru/marketplace/${model.orgSlug}/${model.modelSlug}`,
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: model.stats.avgRating,
+      reviewCount: model.stats.totalReviews,
+      bestRating: 5,
+      worstRating: 1,
+    },
+  };
+}
+
+export default function ModelDetailPage({ params }: RouteParams) {
+  const model = getModelByOrgAndSlug(params.org, params.model);
+  if (!model) notFound();
+
+  const related = findRelatedModels(model, 4);
+  const foreign = isForeignHosted(model.orgSlug);
+  const ruHosted = model.hostingRegion === 'ru';
+  const jsonLd = buildProductJsonLd(model);
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <section className="container mx-auto max-w-7xl px-4 py-6 md:py-10">
+        {/* Breadcrumb */}
+        <nav aria-label="Хлебные крошки" className="mb-4 text-sm">
+          <ol className="flex flex-wrap items-center gap-2 text-muted-foreground">
+            <li>
+              <Link href="/marketplace" className="hover:text-foreground inline-flex items-center gap-1">
+                <ArrowLeft className="h-3 w-3" aria-hidden />
+                Каталог
+              </Link>
+            </li>
+            <li aria-hidden>/</li>
+            <li>{model.orgName}</li>
+            <li aria-hidden>/</li>
+            <li className="text-foreground">{model.name}</li>
+          </ol>
+        </nav>
+
         {/* Header */}
-        <div className="border-b border-border bg-card">
-          <div className="mx-auto max-w-6xl px-4 py-8">
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="mb-6 -ms-3"
-              leftIcon={<ArrowLeft className="h-4 w-4" />}
+        <header className="mb-6">
+          <div className="flex items-start gap-4">
+            <span
+              aria-hidden
+              className="text-4xl shrink-0"
+              title={MODEL_TYPE_LABEL_RU[model.type]}
             >
-              <Link href="/marketplace">Назад в маркетплейс</Link>
-            </Button>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-              <div className="md:col-span-2">
-                <div className="flex gap-4 items-start">
-                  <div className="w-20 h-20 rounded-lg bg-secondary flex items-center justify-center text-4xl shrink-0">
-                    {typeConfig.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center flex-wrap gap-2 mb-2">
-                      <h1 className="text-3xl font-bold text-foreground">
-                        {model.name}
-                      </h1>
-                      <Badge className={typeConfig.color}>{typeConfig.label}</Badge>
-                      {isTransborderRoute && <TransferWarningBadge />}
-                    </div>
-                    <p className="text-muted-foreground mb-2">by {ownerName}</p>
-                    <p className="text-foreground/80">{model.shortDescription}</p>
-                  </div>
-                </div>
-              </div>
-
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">
-                    {model.pricingType === 'free' ? 'Бесплатно' : 'Тарификация'}
-                  </h3>
-                  {model.pricing && model.pricingType === 'paid' && (
-                    <div className="space-y-2 mb-4 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Input:</span>
-                        <span className="font-semibold">
-                          ${model.pricing.input} / {model.pricing.unit}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Output:</span>
-                        <span className="font-semibold">
-                          ${model.pricing.output} / {model.pricing.unit}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <Button
-                    className="w-full mb-2"
-                    leftIcon={<Play className="h-4 w-4" />}
+              {TYPE_ICON[model.type]}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                  {model.name}
+                </h1>
+                <Badge variant="secondary">{MODEL_TYPE_LABEL_RU[model.type]}</Badge>
+                {ruHosted && (
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 bg-emerald-500/15 text-emerald-500 border-emerald-500/20"
                   >
-                    Попробовать
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    leftIcon={<Code2 className="h-4 w-4" />}
-                  >
-                    Получить API ключ
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Stats */}
-            <div className="mt-8 flex flex-wrap gap-8 items-center text-sm">
-              <div className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                <span className="text-lg font-semibold">{model.avgRating}</span>
-                <span className="text-muted-foreground">рейтинг</span>
+                    <Shield className="h-3 w-3" aria-hidden />
+                    Хостинг РФ
+                  </Badge>
+                )}
+                {foreign && <TransferWarningBadge />}
               </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
-                <span className="text-lg font-semibold">
-                  {formatNumber(model.totalRequests)}
-                </span>
-                <span className="text-muted-foreground">запросов</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-400" />
-                <span className="text-lg font-semibold">
-                  {formatNumber(model.totalSubscribers)}
-                </span>
-                <span className="text-muted-foreground">подписчиков</span>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                от{' '}
+                <span className="text-foreground font-medium">{model.orgName}</span>
+                {' · '}
+                <code className="font-mono text-xs">{model.slug}</code>
+              </p>
+              <p className="mt-3 text-foreground/90 max-w-2xl">
+                {model.shortDescription}
+              </p>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Tabs */}
-        <div className="mx-auto max-w-6xl px-4 py-8">
-          <Tabs defaultValue="overview">
-            <TabsList>
-              <TabsTrigger value="overview">Описание</TabsTrigger>
-              <TabsTrigger value="api">
-                <Code className="h-4 w-4 me-2" />
-                API
-              </TabsTrigger>
-              <TabsTrigger value="pricing">
-                <Clock className="h-4 w-4 me-2" />
-                Цены
-              </TabsTrigger>
-            </TabsList>
+        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+          {/* Main content */}
+          <div className="min-w-0 space-y-6">
+            <Tabs defaultValue="overview">
+              <TabsList>
+                <TabsTrigger value="overview">Обзор</TabsTrigger>
+                <TabsTrigger value="api">
+                  <Code2 className="h-4 w-4 me-1" aria-hidden />
+                  API
+                </TabsTrigger>
+                <TabsTrigger value="pricing">
+                  <Clock className="h-4 w-4 me-1" aria-hidden />
+                  Цены
+                </TabsTrigger>
+                <TabsTrigger value="specs">Спеки</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="overview">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="whitespace-pre-line leading-relaxed text-foreground/85">
-                    {model.description}
-                  </div>
-                  <hr className="my-6 border-border" />
-                  <h3 className="text-lg font-semibold mb-3">Теги</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {model.tags?.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="overview">
+                <Card>
+                  <CardContent className="p-6 space-y-4">
+                    <p className="leading-relaxed text-foreground/90">
+                      {model.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {model.tags.map((t) => (
+                        <Badge key={t} variant="outline">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="api">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-6">Endpoints</h3>
-                  <div className="space-y-6">
-                    {model.endpoints?.map((endpoint, index) => (
-                      <div key={index}>
-                        <div className="flex items-center gap-3 mb-2">
-                          <Badge
-                            className={cn(
-                              'font-semibold',
-                              endpoint.method === 'POST'
-                                ? 'bg-green-600 text-white'
-                                : 'bg-blue-600 text-white'
-                            )}
-                          >
-                            {endpoint.method}
-                          </Badge>
-                          <code className="text-sm font-mono text-foreground">
-                            {endpoint.path}
-                          </code>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {endpoint.description}
-                        </p>
-                        <CodeExample endpoint={endpoint} />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="api">
+                <Card>
+                  <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold mb-4">
+                      Быстрый старт
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Используйте единый API AI Aggregator. Замените{' '}
+                      <code className="font-mono text-xs">$AIAG_API_KEY</code> на
+                      свой ключ.
+                    </p>
+                    <CodeExampleTabs model={model} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="pricing">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-6">Тарификация</h3>
-                  {model.pricingType === 'free' ? (
-                    <Alert variant="success">
+              <TabsContent value="pricing">
+                <Card>
+                  <CardContent className="p-6 space-y-4">
+                    <h2 className="text-lg font-semibold">Тарификация</h2>
+                    <p className="font-mono text-foreground">
+                      {formatPriceLabel(model)}
+                    </p>
+                    <Alert>
                       <AlertDescription>
-                        Эта модель доступна бесплатно!
+                        Цены указаны с учётом наценки шлюза 15%. Оплата в рублях
+                        с баланса — без комиссии банка и VPN.
                       </AlertDescription>
                     </Alert>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card>
-                        <CardContent className="p-6 text-center">
-                          <div className="text-3xl font-bold text-primary mb-1">
-                            ${model.pricing?.input}
-                          </div>
-                          <p className="text-muted-foreground">
-                            за {model.pricing?.unit} (input)
-                          </p>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-6 text-center">
-                          <div className="text-3xl font-bold text-primary mb-1">
-                            ${model.pricing?.output}
-                          </div>
-                          <p className="text-muted-foreground">
-                            за {model.pricing?.unit} (output)
-                          </p>
-                        </CardContent>
-                      </Card>
+                    <Button variant="outline" asChild>
+                      <Link href="/pricing">Подробно о тарифах</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="specs">
+                <Card>
+                  <CardContent className="p-6">
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <SpecRow label="Регион хостинга" value={model.hostingRegion.toUpperCase()} />
+                      {model.capabilities.contextWindow && (
+                        <SpecRow
+                          label="Контекст"
+                          value={`${model.capabilities.contextWindow.toLocaleString('ru-RU')} токенов`}
+                        />
+                      )}
+                      {model.capabilities.maxOutputTokens && (
+                        <SpecRow
+                          label="Макс. output"
+                          value={`${model.capabilities.maxOutputTokens.toLocaleString('ru-RU')} токенов`}
+                        />
+                      )}
+                      <SpecRow
+                        label="Streaming"
+                        value={model.capabilities.streaming ? 'да' : 'нет'}
+                      />
+                      <SpecRow
+                        label="Tool-calling"
+                        value={model.capabilities.tools ? 'да' : 'нет'}
+                      />
+                      <SpecRow
+                        label="Vision"
+                        value={model.capabilities.vision ? 'да' : 'нет'}
+                      />
+                      <SpecRow
+                        label="JSON schema"
+                        value={model.capabilities.jsonSchema ? 'да' : 'нет'}
+                      />
+                      <SpecRow
+                        label="p50 latency"
+                        value={`${model.stats.p50LatencyMs} ms`}
+                      />
+                      <SpecRow
+                        label="Uptime"
+                        value={`${model.stats.uptimePct}%`}
+                      />
+                    </dl>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            {related.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold mb-3">Похожие модели</h2>
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  {related.map((m) => (
+                    <ModelCard key={m.slug} model={m} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Sticky sidebar */}
+          <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+            <Card>
+              <CardContent className="p-5 space-y-3">
+                <h2 className="text-sm font-semibold text-muted-foreground">
+                  Цена
+                </h2>
+                <div className="font-mono text-lg">
+                  {formatPriceLabel(model)}
+                </div>
+                <Button asChild className="w-full">
+                  <Link href={`/marketplace/${model.orgSlug}/${model.modelSlug}/playground`}>
+                    <Play className="h-4 w-4 me-1" aria-hidden />
+                    Попробовать в Playground
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="w-full">
+                  <Link href="/dashboard">
+                    <Code2 className="h-4 w-4 me-1" aria-hidden />
+                    Получить API ключ
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Рейтинг</span>
+                  <span className="font-medium">
+                    {model.stats.avgRating.toFixed(1)} ({model.stats.totalReviews})
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Запросов / нед.</span>
+                  <span className="font-medium">
+                    {model.stats.weeklyRequests.toLocaleString('ru-RU')}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Uptime</span>
+                  <span className="font-medium">{model.stats.uptimePct}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">p50 latency</span>
+                  <span className="font-medium">
+                    {model.stats.p50LatencyMs} ms
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {ruHosted && (
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-2">
+                    <Shield className="h-5 w-5 text-emerald-500 shrink-0" aria-hidden />
+                    <div className="text-sm">
+                      <div className="font-semibold text-emerald-500">
+                        Shield-RF: хостинг в РФ
+                      </div>
+                      <p className="text-muted-foreground mt-1">
+                        Модель размещена на территории РФ. Трансграничная
+                        передача ПД не требуется (152-ФЗ).
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            )}
+
+            {foreign && (
+              <Card>
+                <CardContent className="p-5 space-y-2 text-sm">
+                  <div className="font-semibold">Внимание</div>
+                  <p className="text-muted-foreground">
+                    Эта модель размещена за пределами РФ. При передаче
+                    персональных данных требуется отдельное согласие на
+                    трансграничную передачу (152-ФЗ, ст. 12).
+                  </p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/privacy#transborder">Подробнее</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </aside>
         </div>
-      </div>
+      </section>
     </MainLayout>
+  );
+}
+
+function SpecRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between border-b border-border/50 pb-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium">{value}</dd>
+    </div>
   );
 }
