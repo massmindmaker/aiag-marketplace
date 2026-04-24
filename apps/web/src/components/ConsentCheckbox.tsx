@@ -1,10 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Link from '@mui/material/Link';
-import Box from '@mui/material/Box';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { cn } from '@/lib/utils';
 
 export interface ConsentCheckboxProps {
   id: string;
@@ -16,10 +14,9 @@ export interface ConsentCheckboxProps {
 }
 
 /**
- * Reusable consent checkbox for 152-FZ flows.
- *
- * Plan 01 ships an MUI-based version (it's the current design system in apps/web).
- * Plan 03 will migrate this to shadcn/ui without changing the public API.
+ * Reusable consent checkbox for 152-ФЗ flows.
+ * Plan 03: migrated from MUI to shadcn/ui (Radix Checkbox primitive).
+ * Public API is preserved (same props).
  */
 export function ConsentCheckbox({
   id,
@@ -29,43 +26,43 @@ export function ConsentCheckbox({
   required = false,
   onChange,
 }: ConsentCheckboxProps) {
-  const labelNode = (
-    <Box component="span" sx={{ display: 'inline' }}>
-      {label}
-      {detailsHref ? (
-        <>
-          {' '}
-          <Link
-            href={detailsHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            underline="hover"
-          >
-            подробнее
-          </Link>
-        </>
-      ) : null}
-    </Box>
-  );
-
   return (
-    <FormControlLabel
-      htmlFor={id}
-      required={required}
-      control={
-        <Checkbox
-          id={id}
-          checked={checked}
-          required={required}
-          onChange={(event) => onChange(event.target.checked)}
-          inputProps={{
-            'aria-required': required || undefined,
-          }}
-        />
-      }
-      label={labelNode}
-      sx={{ alignItems: 'flex-start', mr: 0 }}
-    />
+    <div className={cn('flex items-start gap-2')}>
+      <Checkbox
+        id={id}
+        checked={checked}
+        required={required}
+        onCheckedChange={(v) => onChange(v === true)}
+        aria-required={required || undefined}
+        className="mt-0.5"
+      />
+      <label
+        htmlFor={id}
+        className="text-sm leading-snug text-foreground cursor-pointer select-none"
+      >
+        <span>
+          {label}
+          {required ? (
+            <span className="text-destructive ms-0.5" aria-hidden="true">
+              *
+            </span>
+          ) : null}
+        </span>
+        {detailsHref ? (
+          <>
+            {' '}
+            <a
+              href={detailsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              подробнее
+            </a>
+          </>
+        ) : null}
+      </label>
+    </div>
   );
 }
 

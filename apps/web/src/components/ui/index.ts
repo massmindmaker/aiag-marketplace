@@ -1,5 +1,5 @@
 // UI Components Index
-// ShadCN-style components for AIAG Marketplace
+// shadcn-style components for AIAG Marketplace (Plan 03)
 
 export { Button, buttonVariants } from './Button';
 export type { ButtonProps } from './Button';
@@ -18,3 +18,106 @@ export { Label } from './Label';
 export { Badge, badgeVariants } from './Badge';
 export { Skeleton } from './Skeleton';
 export { Spinner } from './Spinner';
+export { Checkbox } from './Checkbox';
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from './Tooltip';
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
+export { Alert, AlertTitle, AlertDescription } from './Alert';
+
+// Plan 03 Task 6 — extended shadcn primitives
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogTrigger,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from './Dialog';
+
+export {
+  Sheet,
+  SheetPortal,
+  SheetOverlay,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+} from './Sheet';
+
+export { Separator } from './Separator';
+export { Avatar, AvatarImage, AvatarFallback } from './Avatar';
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+} from './DropdownMenu';
+
+export { Toaster, toast } from './Sonner';
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './Accordion';
+export { Slider } from './Slider';
+export { Switch } from './Switch';
+export { RadioGroup, RadioGroupItem } from './RadioGroup';
+export { Progress } from './Progress';
+export { ScrollArea, ScrollBar } from './ScrollArea';
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from './Table';
+
+export { Container, Section, Stack } from './Layout';
+export { VisuallyHidden } from './VisuallyHidden';
+export type { ContainerProps, SectionProps, StackProps } from './Layout';
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+} from './Form';
+
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+} from './Select';

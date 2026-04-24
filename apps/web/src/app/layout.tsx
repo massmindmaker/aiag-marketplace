@@ -1,22 +1,31 @@
 import type { Metadata } from 'next';
-import { Roboto } from 'next/font/google';
-import ThemeRegistry from '@/theme/ThemeRegistry';
+import { Inter, JetBrains_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { Providers } from '@/components/providers/Providers';
+import { rtlLocales, type Locale } from '@/i18n/config';
 import './globals.css';
 
-const roboto = Roboto({
-  weight: ['300', '400', '500', '700'],
+const inter = Inter({
   subsets: ['latin', 'cyrillic'],
   display: 'swap',
+  variable: '--font-inter',
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains-mono',
 });
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Aggregator - Маркетплейс алгоритмов ИИ',
+    default: 'AI Aggregator — Маркетплейс алгоритмов ИИ',
     template: '%s | AI Aggregator',
   },
   description:
-    'Маркетплейс алгоритмов искусственного интеллекта. Алгоритмы ИИ - быстро, просто, недорого.',
+    'Маркетплейс алгоритмов искусственного интеллекта. Алгоритмы ИИ — быстро, просто, недорого.',
   keywords: [
     'AI',
     'ИИ',
@@ -34,17 +43,31 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
+  const locale = (await getLocale()) as Locale;
+  const messages = await getMessages();
+  const dir = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
+
   return (
-    <html lang="ru" suppressHydrationWarning>
-      <body className={roboto.className}>
-        <Providers>
-          <ThemeRegistry>{children}</ThemeRegistry>
-        </Providers>
+    <html
+      lang={locale}
+      dir={dir}
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrains.variable}`}
+    >
+      <body className="font-sans antialiased bg-background text-foreground">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Providers>{children}</Providers>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,0 +1,139 @@
+{
+  "nav": {
+    "marketplace": "__TODO__",
+    "pricing": "__TODO__",
+    "docs": "__TODO__",
+    "dashboard": "__TODO__",
+    "login": "__TODO__",
+    "register": "__TODO__"
+  },
+  "home": {
+    "hero": {
+      "title": "__TODO__",
+      "subtitle": "__TODO__",
+      "ctaPrimary": "__TODO__",
+      "ctaSecondary": "__TODO__"
+    },
+    "sections": {
+      "providers": "__TODO__",
+      "hot": "__TODO__",
+      "howItWorks": "__TODO__",
+      "comparison": "__TODO__",
+      "pricing": "__TODO__",
+      "faq": "__TODO__"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "__TODO__",
+      "email": "__TODO__",
+      "password": "__TODO__",
+      "submit": "__TODO__",
+      "oauthGoogle": "__TODO__",
+      "oauthGitHub": "__TODO__",
+      "noAccount": "__TODO__",
+      "registerLink": "__TODO__"
+    },
+    "register": {
+      "title": "__TODO__",
+      "name": "__TODO__",
+      "email": "__TODO__",
+      "password": "__TODO__",
+      "submit": "__TODO__",
+      "consentProcessing": "__TODO__",
+      "consentTransborder": "__TODO__",
+      "consentMarketing": "__TODO__",
+      "hasAccount": "__TODO__",
+      "loginLink": "__TODO__"
+    }
+  },
+  "marketplace": {
+    "title": "__TODO__",
+    "filters": {
+      "provider": "__TODO__",
+      "modality": "__TODO__",
+      "source": "__TODO__",
+      "price": "__TODO__",
+      "capabilities": "__TODO__",
+      "shieldRf": "__TODO__",
+      "streaming": "__TODO__",
+      "tools": "__TODO__",
+      "vision": "__TODO__",
+      "jsonSchema": "__TODO__",
+      "batch": "__TODO__",
+      "longContext": "__TODO__",
+      "fast": "__TODO__",
+      "cheap": "__TODO__",
+      "clear": "__TODO__"
+    },
+    "card": {
+      "try": "__TODO__",
+      "perRequest": "__TODO__",
+      "transferWarning": "__TODO__"
+    }
+  },
+  "model": {
+    "tabs": {
+      "overview": "__TODO__",
+      "pricing": "__TODO__",
+      "examples": "__TODO__",
+      "api": "__TODO__"
+    },
+    "stats": {
+      "latency": "__TODO__",
+      "uptime": "__TODO__",
+      "rating": "__TODO__"
+    },
+    "shieldRf": "__TODO__",
+    "transferWarning": {
+      "badge": "__TODO__",
+      "tooltip": "__TODO__"
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "overview": "__TODO__",
+      "keys": "__TODO__",
+      "usage": "__TODO__",
+      "billing": "__TODO__",
+      "logs": "__TODO__"
+    },
+    "stats": {
+      "balance": "__TODO__",
+      "requests": "__TODO__",
+      "spend": "__TODO__"
+    }
+  },
+  "docs": {
+    "title": "__TODO__"
+  },
+  "pricing": {
+    "title": "__TODO__",
+    "tiers": {
+      "free": "__TODO__",
+      "basic": "__TODO__",
+      "starter": "__TODO__",
+      "growth": "__TODO__",
+      "pro": "__TODO__",
+      "business": "__TODO__"
+    },
+    "calculator": {
+      "title": "__TODO__",
+      "requestsPerDay": "__TODO__",
+      "avgTokens": "__TODO__"
+    },
+    "overage": "__TODO__"
+  },
+  "legal": {
+    "privacy": "__TODO__",
+    "terms": "__TODO__"
+  },
+  "theme": {
+    "light": "__TODO__",
+    "dark": "__TODO__",
+    "system": "__TODO__"
+  },
+  "locale": {
+    "switch": "__TODO__"
+  }
+}
