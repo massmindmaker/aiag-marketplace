@@ -1,0 +1,160 @@
+/**
+ * POST /v1/chat/completions — OpenAI-compatible. Stub upstream (mock) until
+ * Plan 05 real adapters ship.
+ */
+import { Hono } from 'hono';
+import { makeRedis } from '../../lib/redis';
+import { errors } from '../../lib/errors';
+import { logger } from '../../lib/logger';
+import { resolveModelWithOverride } from '../../routing/resolver';
+import {
+  pickUpstream,
+  type Mode,
+  type ApiKeyPolicies,
+} from '../../routing/engine';
+import {
+  checkSessionBudget,
+  accumulateSessionCost,
+} from '../../routing/policies';
+import { fetchUsdRubRate } from '../../lib/cbr';
+import { calcCostRub, calcByokFeeRub } from '../../lib/pricing';
+import { settleCharge } from '../../billing/settle';
+import { logRequest } from '../../logging/stream';
+import { streamSseAndSettle } from '../../streaming/sse';
+import { mockUpstream } from '../../upstreams/mock';
+import type { AuthenticatedApiKey } from '../../middleware/auth-plan04';
+
+export const chat = new Hono();
+
+type ChatBody = {
+  model: string;
+  messages: Array<{ role: string; content: unknown }>;
+  stream?: boolean;
+  aiag_mode?: Mode;
+};
+
+chat.post('/completions', async (c) => {
+  const bodyRaw = c.get('rawBody' as never) as ChatBody | undefined;
+  const body: ChatBody = bodyRaw ?? ((await c.req.json()) as ChatBody);
+  const key = c.get('apiKey' as never) as AuthenticatedApiKey;
+  const requestId = c.get('requestId' as never) as string;
+  const byokKey = c.req.header('x-upstream-key');
+  const byok = Boolean(byokKey);
+  const policies = (key.policies ?? {}) as ApiKeyPolicies;
+
+  if (!body?.model || !Array.isArray(body.messages)) {
+    throw errors.badRequest('model + messages[] required');
+  }
+
+  // FIX H4.4: forbid_streaming_prompts
+  if (body.stream && policies.forbid_streaming_prompts) {
+    throw errors.badRequest(
+      'Streaming forbidden by policy (forbid_streaming_prompts)'
+    );
+  }
+
+  const model = await resolveModelWithOverride(body.model);
+  const mode: Mode = (body.aiag_mode ?? policies.default_mode ?? 'auto') as Mode;
+  const upstream = pickUpstream(model.candidates, mode, policies, 'chat');
+
+  // FIX H4.3: per_session_budget_cap_rub
+  const sessionId = c.req.header('x-aiag-session-id');
+  const sessionCap = policies.per_session_budget_cap_rub;
+  if (sessionCap && sessionId) {
+    await checkSessionBudget({ apiKeyId: key.id, sessionId, capRub: sessionCap });
+  }
+
+  const start = Date.now();
+
+  if (body.stream) {
+    const iter = mockUpstream.chatStream!({
+      modelId: upstream.upstream_model_id,
+      messages: body.messages,
+      stream: true,
+      byokKey,
+    });
+    return streamSseAndSettle(c, iter, {
+      upstream,
+      model: { slug: model.slug, type: model.type },
+      key: { id: key.id, org_id: key.org_id },
+      requestId,
+      byok,
+    });
+  }
+
+  const resp = await mockUpstream.chat({
+    modelId: upstream.upstream_model_id,
+    messages: body.messages,
+    stream: false,
+    byokKey,
+  });
+
+  const usage = resp.usage;
+  let totalRub = 0;
+  let upstreamUsd = 0;
+  if (byok) {
+    totalRub = calcByokFeeRub();
+    await settleCharge({ orgId: key.org_id, requestId, totalRub });
+  } else {
+    const rate = await fetchUsdRubRate().catch(() => 92);
+    upstreamUsd =
+      (usage.prompt_tokens / 1000) * upstream.price_per_1k_input +
+      (usage.completion_tokens / 1000) * upstream.price_per_1k_output;
+    totalRub = calcCostRub({
+      upstreamUsd,
+      rate,
+      markup: upstream.markup,
+      cachedInputTokens: usage.cached_input_tokens,
+      totalInputTokens: usage.prompt_tokens,
+    });
+    await settleCharge({ orgId: key.org_id, requestId, totalRub });
+  }
+
+  // FIX H2.3: daily USD cap INCR
+  if (!byok && key.daily_usd_cap) {
+    try {
+      const redis = makeRedis('ratelimit');
+      const today = new Date().toISOString().slice(0, 10);
+      const usedKey = `usd_day:${key.org_id}:${today}`;
+      await redis.incrbyfloat(usedKey, upstreamUsd);
+      await redis.expireat(
+        usedKey,
+        Math.floor(new Date().setUTCHours(24, 0, 0, 0) / 1000)
+      );
+    } catch (e) {
+      logger.warn({ err: String(e) }, 'daily_usd_incr_fail');
+    }
+  }
+
+  if (sessionCap && sessionId) {
+    await accumulateSessionCost({
+      apiKeyId: key.id,
+      sessionId,
+      deltaRub: totalRub,
+      ttlSec: 86400,
+    });
+  }
+
+  void logRequest({
+    requestId,
+    orgId: key.org_id,
+    apiKeyId: key.id,
+    type: 'chat',
+    modelSlug: body.model,
+    upstreamId: upstream.upstream_id,
+    modeRequested: body.aiag_mode ?? null,
+    modeApplied: mode,
+    inputTokens: usage.prompt_tokens,
+    outputTokens: usage.completion_tokens,
+    upstreamCostUsd: upstreamUsd,
+    markup: upstream.markup,
+    totalCostRub: totalRub,
+    statusCode: 200,
+    latencyMs: Date.now() - start,
+    byok,
+  });
+
+  c.header('X-AIAG-Mode-Applied', mode);
+  c.header('X-AIAG-Upstream', upstream.provider);
+  return c.json(resp);
+});
