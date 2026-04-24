@@ -17,6 +17,14 @@ const registerSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
       'Пароль должен содержать заглавные, строчные буквы и цифры'
     ),
+  // 152-FZ (May 2025) — 3 explicit consents
+  consentProcessing: z.literal(true, {
+    errorMap: () => ({ message: 'Требуется согласие на обработку ПДн' }),
+  }),
+  consentTransborder: z.literal(true, {
+    errorMap: () => ({ message: 'Требуется согласие на трансграничную передачу' }),
+  }),
+  consentMarketing: z.boolean().optional().default(false),
 });
 
 export async function POST(request: NextRequest) {
@@ -38,7 +46,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, password } = validation.data;
+    const { name, email, password, consentProcessing, consentTransborder, consentMarketing } = validation.data;
+
+    // Capture consent metadata per 152-FZ
+    const ipHeader =
+      request.headers.get('x-forwarded-for') ??
+      request.headers.get('x-real-ip') ??
+      '';
+    const consentIpAddress = ipHeader.split(',')[0].trim().slice(0, 45) || null;
+    const consentUserAgent = (request.headers.get('user-agent') ?? '').slice(0, 2000) || null;
+    const consentTimestamp = new Date();
 
     // Check if user already exists
     const existingUser = await db.query.users.findFirst({
@@ -71,6 +88,12 @@ export async function POST(request: NextRequest) {
         role: 'user',
         isActive: true,
         isBanned: false,
+        consentProcessing,
+        consentTransborder,
+        consentMarketing,
+        consentTimestamp,
+        consentIpAddress: consentIpAddress ?? undefined,
+        consentUserAgent: consentUserAgent ?? undefined,
       })
       .returning({
         id: users.id,
