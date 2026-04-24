@@ -24,3 +24,6 @@ export * from './requests';
 
 // Notifications
 export * from './notifications';
+
+// Plan 04 Gateway — canonical gateway schema
+export * from './gateway';
