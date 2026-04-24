@@ -79,6 +79,17 @@ export {
 export { Toaster, toast } from './Sonner';
 
 export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+} from './Form';
+
+export {
   Select,
   SelectGroup,
   SelectValue,
