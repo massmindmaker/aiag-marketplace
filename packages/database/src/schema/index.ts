@@ -31,3 +31,10 @@ export * from './notifications';
 
 // Plan 04 Gateway — canonical gateway schema
 export * from './gateway';
+
+// Plan 08 — Launch-time compliance + ops
+export * from './moderation';
+export * from './fraudFlags';
+export * from './cookieConsents';
+export * from './humanReviews';
+export * from './incidents';
