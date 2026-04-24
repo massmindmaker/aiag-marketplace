@@ -77,6 +77,22 @@ export {
 } from './DropdownMenu';
 
 export { Toaster, toast } from './Sonner';
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './Accordion';
+export { Slider } from './Slider';
+export { Switch } from './Switch';
+export { RadioGroup, RadioGroupItem } from './RadioGroup';
+export { Progress } from './Progress';
+export { ScrollArea, ScrollBar } from './ScrollArea';
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from './Table';
 
 export { Container, Section, Stack } from './Layout';
 export { VisuallyHidden } from './VisuallyHidden';
