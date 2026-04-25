@@ -24,7 +24,7 @@ export const app = new Hono();
 
 // ---- in-flight counter for graceful shutdown --------------------------------
 let inFlight = 0;
-app.use('*', async (c, next) => {
+app.use('*', async (_c, next) => {
   inFlight++;
   try {
     await next();
@@ -94,7 +94,9 @@ if (process.env.NODE_ENV !== 'test') {
     process.on(sig, async () => {
       logger.info({ sig, inFlight }, 'shutdown_begin');
       try {
-        await server?.stop?.();
+        if (server && typeof (server as any).stop === 'function') {
+          await (server as any).stop();
+        }
       } catch {
         /* ignore */
       }

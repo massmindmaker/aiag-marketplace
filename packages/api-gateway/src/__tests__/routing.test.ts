@@ -32,7 +32,7 @@ function mk(
 
 const yandex = mk('yandex', 'yandex', 0.0008, 0.0024, 200, 0.99, true);
 const openai = mk('openai-via-or', 'openrouter', 0.03, 0.06, 300, 0.98, false);
-const together = mk('together', 'together', 0.0009, 0.0009, 400, 0.97, false);
+const together = mk('together', 'together', 0.0015, 0.003, 400, 0.97, false);
 const pool = [yandex, openai, together];
 
 describe('norm helper', () => {
