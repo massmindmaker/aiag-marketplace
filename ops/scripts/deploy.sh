@@ -88,9 +88,9 @@ for APP in $APPS; do
   mkdir -p "$TARGET"
   tar -xzf "/srv/aiag/deploy/tmp/$RELEASE/release.tar.gz" -C "$TARGET"
 
-  # Production install
+  # Production install — npm (we use npm workspaces, not bun lockfile)
   cd "$TARGET"
-  bun install --production --frozen-lockfile 2>&1 | tail -5
+  npm ci --omit=dev --no-audit --no-fund --prefer-offline 2>&1 | tail -5 || npm install --omit=dev --no-audit --no-fund 2>&1 | tail -5
 
   # Atomic symlink swap
   ln -sfn "$TARGET" "$CURRENT"

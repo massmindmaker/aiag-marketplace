@@ -44,7 +44,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.30.10",
     "lucide-react": "^0.372.0",
-    "next": "14.2.3",
+    "next": "^14.2.34",
     "next-auth": "5.0.0-beta.18",
     "next-intl": "^3.26.5",
     "next-themes": "^0.4.6",
