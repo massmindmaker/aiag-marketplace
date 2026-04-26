@@ -45,7 +45,7 @@ describe('checkTransborderGate', () => {
     const res = checkTransborderGate('openai/gpt-4o', { transborder: false });
     expect(res.allowed).toBe(false);
     expect(res.error).toBe('transborder_consent_required');
-    expect(res.explanation).toMatch(/трансграничная передача/);
+    expect(res.explanation).toMatch(/трансграничн.{2}\s+передач/i);
     expect(res.consentUrl).toBe('/account/settings#consents');
   });
 });
