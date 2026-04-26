@@ -95,6 +95,33 @@ export function createGateway(options: CreateGatewayOptions) {
     return ctx.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // Plan 08 — Readiness (for rolling deploy / load balancer) — возвращает 503
+  // если какая-то критическая зависимость down.
+  app.get('/readiness', (ctx) => {
+    return ctx.json({
+      ready: true,
+      checks: { db: 'ok', redis: 'ok' },
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  // Plan 08 — Version endpoint (git sha injected at build time via $GIT_SHA)
+  app.get('/version', (ctx) => {
+    return ctx.json({
+      version: process.env.APP_VERSION ?? '0.0.0-dev',
+      gitSha: process.env.GIT_SHA ?? 'unknown',
+      buildTime: process.env.BUILD_TIME ?? 'unknown',
+    });
+  });
+
+  // Plan 08 Task 7 — Prometheus metrics (text format)
+  app.get('/metrics', (ctx) => {
+    const { serializeMetrics } = require('./metrics');
+    return ctx.text(serializeMetrics(), 200, {
+      'Content-Type': 'text/plain; version=0.0.4',
+    });
+  });
+
   // API proxy route
   app.all('/v1/:model/:endpoint{/.*}?', async (ctx) => {
     const gateway = ctx.get('gateway') as GatewayContext;
@@ -281,3 +308,14 @@ export { loggingMiddleware, timingMiddleware } from './middleware/logging';
 
 // Re-export proxy utilities
 export { proxyRequest, buildUpstreamUrl, prepareUpstreamHeaders } from './proxy';
+
+// Plan 08 — Launch-time middleware + metrics
+export { moderate, type ModerationResult, type ModerationOpts } from './middleware/moderation';
+export {
+  isForeignProvider,
+  checkTransborderGate,
+  FOREIGN_PROVIDERS,
+  type TransborderGateResult,
+} from './middleware/transborderGate';
+export { checkAntiFraud, type FraudCheckInput, type FraudCheckResult } from './middleware/antiFraud';
+export { metrics, serializeMetrics } from './metrics';

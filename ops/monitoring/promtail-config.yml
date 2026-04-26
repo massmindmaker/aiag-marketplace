@@ -1,0 +1,56 @@
+# Plan 08 Task 7 — Promtail tails PM2 + systemd journal → Loki 127.0.0.1:3100.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://127.0.0.1:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: pm2
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: pm2
+          host: aiag-prod
+          __path__: /home/aiag-deploy/.pm2/logs/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<app>[^-]+)-(?P<stream>out|error)__.*\.log$'
+          source: filename
+      - labels:
+          app:
+          stream:
+
+  - job_name: systemd
+    journal:
+      max_age: 12h
+      path: /var/log/journal
+      labels:
+        job: systemd
+        host: aiag-prod
+    relabel_configs:
+      - source_labels: [__journal__systemd_unit]
+        target_label: unit
+      - source_labels: [__journal_priority]
+        target_label: priority
+
+  - job_name: nginx
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx
+          host: aiag-prod
+          __path__: /var/log/nginx/*.log
+
+  - job_name: postgres
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: postgres
+          host: aiag-prod
+          __path__: /var/log/postgresql/*.log

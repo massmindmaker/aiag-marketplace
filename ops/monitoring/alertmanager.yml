@@ -1,0 +1,35 @@
+# Plan 08 Task 7 — Alertmanager config.
+# Telegram delivery через gateway webhook (https://ai-aggregator.ru/internal/alert-to-telegram)
+# который читает TELEGRAM_ALERT_BOT_TOKEN + TELEGRAM_ALERT_CHAT_ID из env.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'telegram-all'
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: 'telegram-critical'
+      repeat_interval: 30m
+    - matchers: [severity="high"]
+      receiver: 'telegram-all'
+      repeat_interval: 1h
+
+receivers:
+  - name: 'telegram-all'
+    webhook_configs:
+      - url: 'http://127.0.0.1:3001/internal/alert-to-telegram'
+        send_resolved: true
+
+  - name: 'telegram-critical'
+    webhook_configs:
+      - url: 'http://127.0.0.1:3001/internal/alert-to-telegram?priority=critical'
+        send_resolved: true
+
+inhibit_rules:
+  - source_matchers: [severity="critical"]
+    target_matchers: [severity="high"]
+    equal: [alertname, instance]

@@ -1,0 +1,48 @@
+# Plan 08 Task 7 — Prometheus scrape config (bare-metal, Ubuntu 24.04 apt).
+# Все targets — localhost (bind 127.0.0.1, админ ходит через SSH tunnel).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: aiag-prod
+    environment: production
+
+rule_files:
+  - /etc/prometheus/alert-rules.yml
+
+scrape_configs:
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['127.0.0.1:3001']
+    metrics_path: '/metrics'
+
+  - job_name: 'worker'
+    static_configs:
+      - targets: ['127.0.0.1:3002']
+    metrics_path: '/metrics'
+
+  - job_name: 'web'
+    static_configs:
+      - targets: ['127.0.0.1:3000']
+    metrics_path: '/metrics'
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['127.0.0.1:9187']  # prometheus-postgres-exporter default
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['127.0.0.1:9121']  # prometheus-redis-exporter default
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['127.0.0.1:9100']  # prometheus-node-exporter default
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['127.0.0.1:9090']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['127.0.0.1:9093']

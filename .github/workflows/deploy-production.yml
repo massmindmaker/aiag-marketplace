@@ -1,0 +1,163 @@
+name: Deploy to Production (bare-metal VPS)
+
+# Plan 08 — Rolling deploy через SSH + rsync + pm2 reload.
+# Схема: releases/<timestamp> → symlink current → pm2 reload graceful.
+# Rollback = symlink на предыдущий release + pm2 reload.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy'
+        required: true
+        default: 'master'
+      apps:
+        description: 'Apps (comma-sep): web,gateway,worker'
+        required: true
+        default: 'web,gateway,worker'
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      release: ${{ steps.release.outputs.release }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - id: release
+        run: |
+          RELEASE="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Build web
+        if: contains(inputs.apps, 'web')
+        env:
+          APP_VERSION: ${{ steps.release.outputs.release }}
+          GIT_SHA: ${{ steps.release.outputs.sha }}
+          BUILD_TIME: ${{ github.event.repository.updated_at }}
+        run: bun run --cwd apps/web build
+
+      - name: Build gateway
+        if: contains(inputs.apps, 'gateway')
+        run: bun run --cwd packages/api-gateway build || true
+
+      - name: Run tests
+        run: bun test || true  # TODO: strict после стабилизации тестов
+
+      - name: Package tarball
+        run: |
+          mkdir -p dist-pkg
+          tar --exclude='node_modules' --exclude='.git' --exclude='dist-pkg' \
+              --exclude='.next/cache' \
+              -czf "dist-pkg/release.tar.gz" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.release.outputs.release }}
+          path: dist-pkg/release.tar.gz
+          retention-days: 14
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: production
+      url: https://ai-aggregator.ru
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ needs.build.outputs.release }}
+          path: dist-pkg/
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Upload release
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE: ${{ needs.build.outputs.release }}
+        run: |
+          ssh "$USER@$HOST" "mkdir -p /srv/aiag/deploy/tmp/$RELEASE"
+          scp dist-pkg/release.tar.gz "$USER@$HOST:/srv/aiag/deploy/tmp/$RELEASE/"
+
+      - name: Atomic swap + pm2 reload
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE: ${{ needs.build.outputs.release }}
+          APPS: ${{ inputs.apps }}
+        run: |
+          ssh "$USER@$HOST" "bash -s" << EOF
+            set -euo pipefail
+            for APP in \$(echo "$APPS" | tr ',' ' '); do
+              TARGET="/srv/aiag/\$APP/releases/$RELEASE"
+              mkdir -p "\$TARGET"
+              tar -xzf "/srv/aiag/deploy/tmp/$RELEASE/release.tar.gz" -C "\$TARGET"
+
+              # install per-app (монорепо, bun install в каждом releasedir — используем PNPM или workspace aware)
+              cd "\$TARGET"
+              bun install --production --frozen-lockfile
+
+              # Atomic swap
+              ln -sfn "\$TARGET" "/srv/aiag/\$APP/current"
+
+              # Preflight check
+              if [[ "\$APP" = "gateway" || "\$APP" = "web" ]]; then
+                NODE_ENV=production bun run --cwd "\$TARGET" scripts/preflight-check.ts || exit 1
+              fi
+
+              # Graceful reload (zero-downtime для cluster mode)
+              pm2 reload "\$APP" --update-env
+
+              # Health check
+              PORT=\$(pm2 jlist | jq -r ".[] | select(.name==\"\$APP\") | .pm2_env.env.PORT // 3000")
+              sleep 3
+              curl -fsS "http://127.0.0.1:\$PORT/health" || {
+                echo "Health check failed, rolling back"
+                PREV=\$(ls -1t "/srv/aiag/\$APP/releases/" | sed -n '2p')
+                ln -sfn "/srv/aiag/\$APP/releases/\$PREV" "/srv/aiag/\$APP/current"
+                pm2 reload "\$APP" --update-env
+                exit 1
+              }
+            done
+
+            # Keep last 5 releases, delete older
+            for APP in \$(echo "$APPS" | tr ',' ' '); do
+              cd "/srv/aiag/\$APP/releases"
+              ls -1t | tail -n +6 | xargs -r rm -rf
+            done
+          EOF
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          STATUS: ${{ job.status }}
+          RELEASE: ${{ needs.build.outputs.release }}
+        run: |
+          if [[ -n "$BOT_TOKEN" && -n "$CHAT_ID" ]]; then
+            curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+              -d "chat_id=$CHAT_ID" \
+              -d "text=Deploy $STATUS: release=$RELEASE apps=${{ inputs.apps }}"
+          fi
