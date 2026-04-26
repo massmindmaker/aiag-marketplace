@@ -146,51 +146,7 @@ export const balanceTransactions = pgTable(
   })
 );
 
-// Developer payouts
-export const payouts = pgTable(
-  'payouts',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'restrict' }),
-
-    // Payout details
-    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
-    currency: varchar('currency', { length: 3 }).default('RUB').notNull(),
-    status: varchar('status', { length: 20 }).default('pending').notNull(), // 'pending' | 'processing' | 'completed' | 'failed'
-
-    // Bank details (encrypted reference)
-    bankDetailsId: uuid('bank_details_id'),
-
-    // Period
-    periodStart: timestamp('period_start', { mode: 'date' }).notNull(),
-    periodEnd: timestamp('period_end', { mode: 'date' }).notNull(),
-
-    // Processing
-    processedAt: timestamp('processed_at', { mode: 'date' }),
-    transactionId: text('transaction_id'),
-    errorMessage: text('error_message'),
-
-    // Metadata
-    metadata: jsonb('metadata').$type<{
-      modelEarnings?: Array<{
-        modelId: string;
-        amount: number;
-        requests: number;
-      }>;
-    }>(),
-
-    // Timestamps
-    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
-  },
-  (table) => ({
-    userIdx: index('payouts_user_idx').on(table.userId),
-    statusIdx: index('payouts_status_idx').on(table.status),
-    periodIdx: index('payouts_period_idx').on(table.periodStart, table.periodEnd),
-  })
-);
+// NOTE: developer/author payouts table moved to schema/earnings.ts (Plan 07).
 
 // Relations
 export const paymentsRelations = relations(payments, ({ one, many }) => ({
@@ -224,13 +180,6 @@ export const balanceTransactionsRelations = relations(balanceTransactions, ({ on
   }),
 }));
 
-export const payoutsRelations = relations(payouts, ({ one }) => ({
-  user: one(users, {
-    fields: [payouts.userId],
-    references: [users.id],
-  }),
-}));
-
 // Types
 export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
@@ -238,5 +187,4 @@ export type PaymentWebhookLog = typeof paymentWebhookLogs.$inferSelect;
 export type NewPaymentWebhookLog = typeof paymentWebhookLogs.$inferInsert;
 export type BalanceTransaction = typeof balanceTransactions.$inferSelect;
 export type NewBalanceTransaction = typeof balanceTransactions.$inferInsert;
-export type Payout = typeof payouts.$inferSelect;
-export type NewPayout = typeof payouts.$inferInsert;
+// Payout / NewPayout types: see schema/earnings.ts
