@@ -23,10 +23,16 @@ import type {
   UpstreamInvokeOptions,
   VideoRequest,
 } from '../base/UpstreamAdapter';
+import type { S3Uploader } from '../s3-upload';
+import { mirrorMediaToS3 } from '../s3-upload';
 
 export interface FalConfig extends Omit<AdapterConfig, 'baseUrl' | 'auth_scheme'> {
   baseUrl?: string;
   webhook_url?: string;
+  /** Optional S3 uploader — when provided, completed media is mirrored to our bucket. */
+  s3Uploader?: S3Uploader;
+  /** Key prefix for S3 uploads (default: 'fal/{date}/'). */
+  s3Prefix?: string;
 }
 
 interface FalSubmitResponse {
@@ -49,6 +55,8 @@ export class FalAdapter extends UpstreamAdapterBase {
   readonly name = 'fal';
   readonly supports_modalities: readonly Modality[] = ['image', 'video'];
   private webhook_url?: string;
+  private s3Uploader?: S3Uploader;
+  private s3Prefix: string;
 
   constructor(cfg: FalConfig) {
     super({
@@ -64,6 +72,8 @@ export class FalAdapter extends UpstreamAdapterBase {
       retry: cfg.retry,
     });
     this.webhook_url = cfg.webhook_url;
+    this.s3Uploader = cfg.s3Uploader;
+    this.s3Prefix = cfg.s3Prefix ?? `fal/${new Date().toISOString().slice(0, 10)}/`;
   }
 
   protected buildHeaders(apiKey: string, overrides?: Record<string, string>) {
@@ -135,7 +145,6 @@ export class FalAdapter extends UpstreamAdapterBase {
     if (!poll_url) {
       throw new Error('fal.pollAsync requires poll_url in opts (from submit response)');
     }
-    const apiKey = await this.getApiKey(opts.byok_key);
     const statusRes = await this.request({
       path: poll_url,
       method: 'GET',
@@ -145,13 +154,45 @@ export class FalAdapter extends UpstreamAdapterBase {
     if (status.status === 'COMPLETED') {
       const resultUrl = status.response_url ?? poll_url.replace('/status', '');
       const resultRes = await this.request({ path: resultUrl, method: 'GET', no_retry: true });
-      const output = await resultRes.json();
+      const output = (await resultRes.json()) as Record<string, unknown>;
+      // If S3 uploader configured, mirror media URLs to our bucket
+      if (this.s3Uploader) {
+        const mirrored = await this.mirrorOutputToS3(output, task_id);
+        return { status: 'completed', output: mirrored };
+      }
       return { status: 'completed', output };
     }
     if (status.status === 'FAILED') {
       return { status: 'failed', error: status.error ?? 'fal job failed' };
     }
     return { status: 'pending' };
+  }
+
+  /**
+   * Mirror provider-hosted media URLs in the Fal output to our S3 bucket.
+   * Supports common Fal response shapes: { images: [{ url }] }, { video: { url } }, etc.
+   */
+  private async mirrorOutputToS3(
+    output: Record<string, unknown>,
+    task_id: string,
+  ): Promise<Record<string, unknown>> {
+    const urls = extractMediaUrls(output);
+    if (urls.length === 0) return output;
+
+    const mirrored: Record<string, string> = {};
+    for (let i = 0; i < urls.length; i++) {
+      const src = urls[i];
+      const ext = src.split('?')[0].split('.').pop() ?? 'bin';
+      const destKey = `${this.s3Prefix}${task_id}/${i}.${ext}`;
+      try {
+        const res = await mirrorMediaToS3(this.s3Uploader!, src, destKey, this.config.fetch ?? fetch);
+        mirrored[src] = res.url;
+      } catch (err) {
+        this.log.warn({ src, error: (err as Error).message }, 'S3 mirror failed, keeping upstream URL');
+      }
+    }
+
+    return replaceUrlsInOutput(output, mirrored) as Record<string, unknown>;
   }
 
   async healthCheck(): Promise<HealthStatus> {
@@ -205,3 +246,34 @@ const CURATED_FAL_MODELS: ModelMeta[] = [
     pricing: { per_image: 0.003 },
   },
 ];
+
+/** Recursively collect HTTP(S) URLs that look like media assets. */
+function extractMediaUrls(obj: unknown): string[] {
+  const urls: string[] = [];
+  if (typeof obj === 'string' && /^https?:\/\//.test(obj) && /\.(png|jpe?g|gif|webp|mp4|webm|mov|wav|mp3|ogg)/i.test(obj)) {
+    urls.push(obj);
+  } else if (Array.isArray(obj)) {
+    for (const item of obj) urls.push(...extractMediaUrls(item));
+  } else if (obj && typeof obj === 'object') {
+    for (const v of Object.values(obj)) urls.push(...extractMediaUrls(v));
+  }
+  return urls;
+}
+
+/** Deep-clone an object, replacing every occurrence of oldUrl with newUrl. */
+function replaceUrlsInOutput(obj: unknown, map: Record<string, string>): unknown {
+  if (typeof obj === 'string') {
+    return map[obj] ?? obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => replaceUrlsInOutput(item, map));
+  }
+  if (obj && typeof obj === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      out[k] = replaceUrlsInOutput(v, map);
+    }
+    return out;
+  }
+  return obj;
+}

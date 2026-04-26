@@ -2,6 +2,7 @@
   "extends": "@aiag/typescript-config/node-library.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "rootDir": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

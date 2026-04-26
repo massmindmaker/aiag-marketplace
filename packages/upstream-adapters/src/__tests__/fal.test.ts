@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FalAdapter } from '../adapters/fal';
+import { MockS3Uploader } from '../s3-upload';
 import { createFetchMock } from './fetch-mock';
 
 describe('FalAdapter', () => {
@@ -98,5 +99,44 @@ describe('FalAdapter', () => {
     const models = await adapter.listModels();
     expect(models.length).toBeGreaterThan(0);
     expect(models.every((m) => m.id.startsWith('fal-ai/'))).toBe(true);
+  });
+
+  it('pollAsync mirrors completed media to S3 when s3Uploader configured', async () => {
+    const s3 = new MockS3Uploader();
+    const mock = createFetchMock([
+      {
+        status: 200,
+        body: {
+          status: 'COMPLETED',
+          request_id: 'x',
+          response_url: 'https://queue.fal.run/fal-ai/x/requests/x',
+        },
+      },
+      {
+        status: 200,
+        body: { images: [{ url: 'https://fal.media/img.png' }] },
+      },
+      {
+        status: 200,
+        body: new TextDecoder('latin1').decode(new Uint8Array([1, 2, 3, 4])),
+        headers: { 'content-type': 'image/png' },
+      },
+    ]);
+    const adapter = new FalAdapter({
+      apiKey: 'k',
+      fetch: mock.fetch,
+      s3Uploader: s3,
+      s3Prefix: 'test/fal/',
+    });
+    const result = await adapter.pollAsync('x', {
+      request_id: 'r',
+      poll_url: 'https://queue.fal.run/fal-ai/x/requests/x/status',
+    } as any);
+    expect(result.status).toBe('completed');
+    const output = result.output as { images: Array<{ url: string }> };
+    // The image URL should now point to our S3 bucket
+    expect(output.images[0].url).toContain('storage.aiag.ru');
+    expect(output.images[0].url).toContain('test/fal/');
+    expect(s3.store.size).toBe(1);
   });
 });

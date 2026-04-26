@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { YandexIamTokenManager } from '../adapters/yandex-iam';
 import { createFetchMock } from './fetch-mock';
 

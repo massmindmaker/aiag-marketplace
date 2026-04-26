@@ -54,13 +54,6 @@ interface KieStatusResponse {
 
 type KieFamily = 'veo' | 'suno' | 'image';
 
-function familyForModel(modelId: string): KieFamily {
-  const id = modelId.toLowerCase();
-  if (id.startsWith('veo')) return 'veo';
-  if (id.startsWith('suno')) return 'suno';
-  return 'image';
-}
-
 export class KieAdapter extends UpstreamAdapterBase {
   readonly name = 'kie';
   readonly supports_modalities: readonly Modality[] = ['image', 'video', 'audio'];

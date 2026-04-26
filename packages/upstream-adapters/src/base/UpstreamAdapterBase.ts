@@ -102,7 +102,7 @@ export abstract class UpstreamAdapterBase implements UpstreamAdapter {
         };
         if (opts.body !== undefined && opts.body !== null) {
           if (typeof opts.body === 'string' || opts.body instanceof ArrayBuffer) {
-            init.body = opts.body as BodyInit;
+            init.body = opts.body as NonNullable<RequestInit['body']>;
           } else {
             init.body = JSON.stringify(opts.body);
             (init.headers as Record<string, string>)['content-type'] ??= 'application/json';
