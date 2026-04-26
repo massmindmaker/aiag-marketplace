@@ -36,3 +36,12 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 .vercel
+
+# Local deploy artifacts
+ecosystem.config.cjs
+gateway-dist.tar.gz
+gateway-dist.zip
+nginx-ai-aggregator.ru.conf
+packages/api-gateway/package.json.deploy
+packages/api-gateway/package.json.prod
+packages/api-gateway/package.production.json
