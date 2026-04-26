@@ -1,0 +1,120 @@
+# Plan 08 Task 8 — 9 alert rules per Spec §11 + cert expiry + moderation degraded.
+groups:
+  - name: aiag_alerts
+    interval: 30s
+    rules:
+      # 1. Upstream провайдер возвращает ≥5% 5xx за 5 минут
+      - alert: UpstreamFailureRate
+        expr: |
+          (sum by (provider) (rate(aiag_requests_total{status=~"5.."}[5m]))
+           / sum by (provider) (rate(aiag_requests_total[5m]))) > 0.05
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "Upstream {{ $labels.provider }} failure rate > 5%"
+          runbook: "ops/runbook/alert-responses/upstream-failure-rate.md"
+
+      # 2. Circuit breaker открыт >5 мин
+      - alert: CircuitBreakerOpen
+        expr: aiag_circuit_breaker_state == 1
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.provider }} > 5min"
+          runbook: "ops/runbook/alert-responses/circuit-breaker-open.md"
+
+      # 3. Большой % запросов обрывается по 402 (exhaustion)
+      - alert: BalanceExhaustionRate
+        expr: |
+          (rate(aiag_balance_exhaustion_total[1h])
+           / rate(aiag_requests_total[1h])) > 0.1
+        for: 1h
+        labels: { severity: medium }
+        annotations:
+          summary: "Balance exhaustion rate > 10% of requests (possible billing issue)"
+          runbook: "ops/runbook/alert-responses/balance-exhaustion.md"
+
+      # 4. TTFT p95 выше 5 сек — deg UX
+      - alert: TtftP95High
+        expr: |
+          histogram_quantile(0.95, sum by (provider, le) (rate(aiag_ttft_seconds_bucket[5m]))) > 5
+        for: 5m
+        labels: { severity: medium }
+        annotations:
+          summary: "TTFT p95 > 5s for {{ $labels.provider }}"
+          runbook: "ops/runbook/alert-responses/ttft-p95.md"
+
+      # 5. Settlement failures — критично, деньги в лимбе
+      - alert: SettlementFailureRate
+        expr: |
+          (rate(aiag_settlement_failures_total[1h])
+           / rate(aiag_requests_total[1h])) > 0.001
+        for: 1h
+        labels: { severity: critical }
+        annotations:
+          summary: "Settlement failure rate > 0.1% (money stuck)"
+          runbook: "ops/runbook/alert-responses/settlement-failure.md"
+
+      # 6. Диск заполнен >80% — pgbackrest / logs блокируются
+      - alert: DiskUsageHigh
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.2
+        for: 10m
+        labels: { severity: high }
+        annotations:
+          summary: "Free disk < 20% on {{ $labels.instance }}"
+          runbook: "ops/runbook/alert-responses/disk-usage.md"
+
+      # 7. 5xx общее > 1% за 5 мин
+      - alert: HttpErrorRate5xx
+        expr: |
+          (sum(rate(aiag_requests_total{status=~"5.."}[5m]))
+           / sum(rate(aiag_requests_total[5m]))) > 0.01
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "Total 5xx rate > 1% for 5m"
+          runbook: "ops/runbook/alert-responses/5xx-rate.md"
+
+      # 8. Backup verification упал
+      - alert: BackupVerificationFailed
+        expr: aiag_backup_verification_status == 0
+        for: 1h
+        labels: { severity: critical }
+        annotations:
+          summary: "Daily pgbackrest verification FAILED"
+          runbook: "ops/runbook/alert-responses/backup-verification.md"
+
+      # 9. PII detections spike — возможна утечка или ошибка в фильтре
+      - alert: PiiDetectionSpike
+        expr: |
+          rate(aiag_pii_detections_total[10m])
+          > (avg_over_time(rate(aiag_pii_detections_total[10m])[7d:10m]) + 3 * stddev_over_time(rate(aiag_pii_detections_total[10m])[7d:10m]))
+        for: 10m
+        labels: { severity: medium }
+        annotations:
+          summary: "PII detection rate >3σ above 7d baseline"
+          runbook: "ops/runbook/alert-responses/pii-detection-spike.md"
+
+      # 10. (bonus) SSL cert expires <30 days
+      - alert: SslCertExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry - time() < 30 * 24 * 3600
+        for: 1h
+        labels: { severity: medium }
+        annotations:
+          summary: "SSL cert for {{ $labels.instance }} expires in <30 days"
+
+      # 11. (bonus) Moderation degraded — оба local-провайдера down
+      - alert: ModerationDegraded
+        expr: increase(aiag_moderation_blocks_total{provider="degraded"}[5m]) > 0
+        for: 5m
+        labels: { severity: major }
+        annotations:
+          summary: "Local content-moderation providers (Yandex + Llama) both down, gateway in fail-open mode"
+
+      # 12. (bonus) High rate of transborder gate blocks — возможна UX/consent baguette
+      - alert: TransborderGateBlocksHigh
+        expr: rate(aiag_transborder_gate_blocks_total[5m]) > 1
+        for: 15m
+        labels: { severity: info }
+        annotations:
+          summary: "High rate of 403 from transborder gate (users lacking consent)"
