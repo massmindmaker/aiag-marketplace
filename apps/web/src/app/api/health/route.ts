@@ -1,15 +1,32 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { sql } from '@aiag/database';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Plan 08 — /api/health для Next.js web app.
- * Быстрый liveness-check (nginx upstream / pm2 / load balancer).
+ * GET /api/health — liveness + DB check.
+ * Used by uptime cron and load balancer.
  */
 export async function GET() {
-  return NextResponse.json({
-    status: 'ok',
-    service: 'web',
-    timestamp: new Date().toISOString(),
-  });
+  const start = Date.now();
+  let dbOk = false;
+  try {
+    await db.execute(sql`SELECT 1`);
+    dbOk = true;
+  } catch {
+    dbOk = false;
+  }
+  return NextResponse.json(
+    {
+      ok: dbOk,
+      service: 'web',
+      db: dbOk ? 'ok' : 'error',
+      uptime_s: process.uptime(),
+      ts: Date.now(),
+      latency_ms: Date.now() - start,
+    },
+    { status: dbOk ? 200 : 503 }
+  );
 }

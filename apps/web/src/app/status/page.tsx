@@ -1,7 +1,20 @@
 import { headers } from 'next/headers';
+import { promises as fs } from 'node:fs';
 
 export const metadata = { title: 'Статус — AI-Aggregator' };
 export const dynamic = 'force-dynamic';
+
+const UPTIME_LOG = process.env.UPTIME_LOG_PATH ?? '/var/log/aiag-uptime.log';
+
+async function getUptimeTail(): Promise<string[]> {
+  try {
+    const raw = await fs.readFile(UPTIME_LOG, 'utf8');
+    const lines = raw.trim().split('\n');
+    return lines.slice(-50);
+  } catch {
+    return [];
+  }
+}
 
 type StatusResponse = {
   providers: Array<{
@@ -46,7 +59,7 @@ function statusColor(s: string) {
 }
 
 export default async function StatusPage() {
-  const data = await getStatus();
+  const [data, uptimeLines] = await Promise.all([getStatus(), getUptimeTail()]);
   const allOk = data.providers.every((p) => p.status === 'operational') && data.activeIncidents.length === 0;
 
   return (
@@ -104,6 +117,17 @@ export default async function StatusPage() {
               ))}
             </ul>
           </>
+        )}
+
+        <h2 className="mt-8 text-xl font-semibold">Uptime monitor</h2>
+        {uptimeLines.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Uptime monitoring active, see Grafana for details.
+          </p>
+        ) : (
+          <pre className="mt-4 max-h-72 overflow-auto rounded-md border bg-muted/30 p-3 text-xs leading-relaxed font-mono">
+            {uptimeLines.join('\n')}
+          </pre>
         )}
 
         <h2 className="mt-8 text-xl font-semibold">История инцидентов</h2>

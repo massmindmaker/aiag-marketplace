@@ -20,8 +20,15 @@ export default function ForgotPasswordPage() {
     setError('');
     setIsLoading(true);
     try {
-      // TODO: Implement actual password reset API
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        throw new Error(`status ${res.status}`);
+      }
+      // Always succeed (no user enumeration on the API side either)
       setIsSuccess(true);
     } catch {
       setError('Произошла ошибка. Попробуйте позже.');
