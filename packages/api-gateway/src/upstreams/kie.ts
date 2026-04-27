@@ -1,16 +1,21 @@
 /**
- * Kie.ai upstream — wraps Kie's async media APIs (image/video/audio) for the
- * gateway's UpstreamAdapter contract.
+ * Kie.ai upstream — wraps Kie's unified async jobs API for the gateway's
+ * UpstreamAdapter contract.
  *
- * Kie is async-first: POST /api/v1/<family>/generate returns { data: { taskId } },
- * GET /api/v1/<family>/status/<taskId> returns the eventual result. We expose:
- *   - imageGeneration / videoGeneration / audioSpeech: submit + return MediaJob
- *   - pollJob: status fetch
- *   - chat: throws (Kie does not serve chat)
+ * Kie exposes a single endpoint family for all media generation:
+ *   POST /api/v1/jobs/createTask       body: { model, input: {...} }
+ *   GET  /api/v1/jobs/recordInfo?taskId=<id>
  *
- * Routes synchronously poll up to KIE_SYNC_POLL_MS (default 60s) before
- * returning the queued job to the caller. Beyond that, callers can poll
- * /v1/jobs/{id} (future endpoint) — for now they re-call the upstream poll URL.
+ * Response shape:
+ *   { code: 200, msg: "success", data: { taskId, recordId } }
+ *   { data: { state: "success"|"fail"|"processing", resultJson, failMsg, ... } }
+ *
+ * `resultJson` is a stringified JSON like {"resultUrls":["https://..."]}.
+ *
+ * Routes synchronously poll up to KIE_SYNC_POLL_MS (default 60s); if the
+ * job is still pending, the route returns a 202 with the job_id so the
+ * caller can poll `/api/v1/jobs/recordInfo?taskId=<id>` directly (or via
+ * a future internal /v1/jobs/{id} endpoint).
  *
  * Reads system key from process.env.KIE_API_KEY. BYOK header overrides.
  */
@@ -32,33 +37,14 @@ function selectKey(byok?: string): string | undefined {
   return byok || process.env.KIE_API_KEY;
 }
 
-function inferFamily(modelId: string): 'image' | 'video' | 'suno' {
-  const id = modelId.toLowerCase();
-  if (id.includes('suno') || id.includes('audio') || id.includes('music')) return 'suno';
-  if (
-    id.includes('veo') ||
-    id.includes('sora') ||
-    id.includes('kling') ||
-    id.includes('hailuo') ||
-    id.includes('runway') ||
-    id.includes('seedance') ||
-    id.includes('hunyuan') ||
-    id.includes('wan') ||
-    id.includes('video')
-  ) {
-    return 'video';
-  }
-  return 'image';
-}
-
-async function submit(
-  family: 'image' | 'video' | 'suno',
-  body: Record<string, unknown>,
+async function createTask(
+  model: string,
+  input: Record<string, unknown>,
   byokKey?: string,
 ): Promise<MediaJob> {
   const apiKey = selectKey(byokKey);
   if (!apiKey) throw new Error('KIE_API_KEY not configured');
-  const url = `${KIE_BASE}/api/v1/${family}/generate`;
+  const url = `${KIE_BASE}/api/v1/jobs/createTask`;
   const start = Date.now();
   const res = await fetch(url, {
     method: 'POST',
@@ -66,74 +52,96 @@ async function submit(
       authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model, input }),
   });
   const text = await res.text();
   if (!res.ok) {
-    logger.warn({ family, status: res.status, body: text.slice(0, 500) }, 'kie_submit_error');
-    throw new Error(`Kie ${family} submit ${res.status}: ${text.slice(0, 200)}`);
+    logger.warn({ model, status: res.status, body: text.slice(0, 500) }, 'kie_submit_error');
+    throw new Error(`Kie createTask ${res.status}: ${text.slice(0, 200)}`);
   }
-  let data: { data?: { taskId?: string }; code?: number; msg?: string };
+  let data: { code?: number; msg?: string; data?: { taskId?: string } };
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(`Kie ${family} returned non-JSON: ${text.slice(0, 200)}`);
+    throw new Error(`Kie createTask non-JSON: ${text.slice(0, 200)}`);
+  }
+  if (data?.code && data.code !== 200) {
+    throw new Error(`Kie createTask code=${data.code}: ${data.msg ?? 'unknown'}`);
   }
   const taskId = data?.data?.taskId;
   if (!taskId) {
-    throw new Error(`Kie ${family} returned no taskId: ${text.slice(0, 200)}`);
+    throw new Error(`Kie createTask returned no taskId: ${text.slice(0, 200)}`);
   }
-  logger.info({ family, taskId, ms: Date.now() - start }, 'kie_submit_ok');
+  logger.info({ model, taskId, ms: Date.now() - start }, 'kie_submit_ok');
   return {
     status: 'queued',
     job_id: taskId,
-    poll_url: `${KIE_BASE}/api/v1/${family}/status/${taskId}`,
+    poll_url: `${KIE_BASE}/api/v1/jobs/recordInfo?taskId=${taskId}`,
   };
 }
 
-async function pollOnce(
-  family: 'image' | 'video' | 'suno',
-  jobId: string,
-  byokKey?: string,
-): Promise<MediaJob> {
+interface KieRecordResponse {
+  code?: number;
+  data?: {
+    taskId?: string;
+    state?: string;
+    resultJson?: string;
+    failCode?: string | null;
+    failMsg?: string | null;
+  };
+}
+
+function extractUrls(resultJson?: string): string[] {
+  if (!resultJson) return [];
+  try {
+    const parsed = JSON.parse(resultJson) as Record<string, unknown>;
+    const urls = parsed.resultUrls ?? parsed.urls ?? parsed.outputUrls;
+    if (Array.isArray(urls)) return urls.filter((u): u is string => typeof u === 'string');
+    if (typeof urls === 'string') return [urls];
+    // Some video models return { videoUrl: "..." }
+    const single =
+      (parsed.videoUrl as string | undefined) ??
+      (parsed.audioUrl as string | undefined) ??
+      (parsed.imageUrl as string | undefined) ??
+      (parsed.url as string | undefined);
+    if (single) return [single];
+  } catch {
+    /* fall through */
+  }
+  return [];
+}
+
+async function pollOnce(jobId: string, byokKey?: string): Promise<MediaJob> {
   const apiKey = selectKey(byokKey);
   if (!apiKey) throw new Error('KIE_API_KEY not configured');
-  const url = `${KIE_BASE}/api/v1/${family}/status/${jobId}`;
+  const url = `${KIE_BASE}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(jobId)}`;
   const res = await fetch(url, {
     method: 'GET',
     headers: { authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Kie ${family} status ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Kie recordInfo ${res.status}: ${text.slice(0, 200)}`);
   }
-  const body = (await res.json()) as {
-    code?: number;
-    data?: {
-      status?: string;
-      output?: unknown;
-      output_url?: string;
-      url?: string;
-      error?: string;
-      fail_reason?: string;
-    };
-  };
-  const s = body?.data?.status;
-  if (s === 'completed' || s === 'success') {
+  const body = (await res.json()) as KieRecordResponse;
+  const s = (body?.data?.state ?? '').toLowerCase();
+  if (s === 'success' || s === 'completed') {
+    const urls = extractUrls(body.data?.resultJson);
     return {
       status: 'completed',
       job_id: jobId,
-      output: body.data?.output ?? body.data?.output_url ?? body.data?.url,
+      output: urls.length === 1 ? urls[0] : urls.length ? urls : body.data?.resultJson,
     };
   }
-  if (s === 'failed') {
+  if (s === 'fail' || s === 'failed') {
     return {
       status: 'failed',
       job_id: jobId,
-      error: body.data?.fail_reason ?? body.data?.error ?? 'kie job failed',
+      error: body.data?.failMsg ?? body.data?.failCode ?? 'kie job failed',
     };
   }
-  return { status: s === 'processing' ? 'processing' : 'queued', job_id: jobId };
+  // processing | queued | pending | running
+  return { status: s === 'processing' || s === 'running' ? 'processing' : 'queued', job_id: jobId };
 }
 
 export const kieUpstream: UpstreamAdapter = {
@@ -142,74 +150,34 @@ export const kieUpstream: UpstreamAdapter = {
   },
 
   async imageGeneration(req: ImageRequest): Promise<MediaJob> {
-    return submit(
-      inferFamily(req.modelId) === 'image' ? 'image' : 'image',
-      {
-        model: req.modelId,
-        prompt: req.prompt,
-        negative_prompt: req.negative_prompt,
-        size: req.size,
-        n: req.n ?? 1,
-        image_url: req.reference_image_url,
-      },
-      req.byokKey,
-    );
+    const input: Record<string, unknown> = { prompt: req.prompt };
+    if (req.n) input.n = req.n;
+    if (req.size) input.size = req.size;
+    if (req.negative_prompt) input.negative_prompt = req.negative_prompt;
+    if (req.reference_image_url) input.image_url = req.reference_image_url;
+    return createTask(req.modelId, input, req.byokKey);
   },
 
   async videoGeneration(req: VideoRequest): Promise<MediaJob> {
-    return submit(
-      'video',
-      {
-        model: req.modelId,
-        prompt: req.prompt,
-        duration: req.duration_s,
-        aspect_ratio: req.aspect_ratio,
-        image_url: req.image_url,
-      },
-      req.byokKey,
-    );
+    const input: Record<string, unknown> = { prompt: req.prompt };
+    if (req.duration_s) input.duration = req.duration_s;
+    if (req.aspect_ratio) input.aspect_ratio = req.aspect_ratio;
+    if (req.image_url) input.image_url = req.image_url;
+    return createTask(req.modelId, input, req.byokKey);
   },
 
   async audioSpeech(req: AudioSpeechRequest): Promise<MediaJob> {
-    return submit(
-      'suno',
-      {
-        model: req.modelId,
-        prompt: req.input,
-        voice: req.voice,
-        format: req.format,
-      },
-      req.byokKey,
-    );
+    const input: Record<string, unknown> = { prompt: req.input };
+    if (req.voice) input.voice = req.voice;
+    if (req.format) input.format = req.format;
+    return createTask(req.modelId, input, req.byokKey);
   },
 
   async audioTranscription(_req: AudioTranscriptionRequest): Promise<MediaJob> {
     throw new Error('Kie does not provide STT; use a Whisper-capable upstream');
   },
 
-  async pollJob(jobId: string, family: 'image' | 'video' | 'suno'): Promise<MediaJob> {
-    return pollOnce(family, jobId);
+  async pollJob(jobId: string): Promise<MediaJob> {
+    return pollOnce(jobId);
   },
 };
-
-/**
- * Helper for routes: submit + poll until done or timeout.
- * Returns the final MediaJob (completed/failed) or the queued handle if timeout.
- */
-export async function submitAndPoll(
-  family: 'image' | 'video' | 'suno',
-  body: Record<string, unknown>,
-  opts: { byokKey?: string; timeoutMs?: number; intervalMs?: number } = {},
-): Promise<MediaJob> {
-  const timeoutMs = opts.timeoutMs ?? Number(process.env.KIE_SYNC_POLL_MS || 60_000);
-  const intervalMs = opts.intervalMs ?? 3_000;
-  const handle = await submit(family, body, opts.byokKey);
-  const deadline = Date.now() + timeoutMs;
-  let last = handle;
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, intervalMs));
-    last = await pollOnce(family, handle.job_id, opts.byokKey);
-    if (last.status === 'completed' || last.status === 'failed') return last;
-  }
-  return { ...handle, status: 'queued' };
-}
