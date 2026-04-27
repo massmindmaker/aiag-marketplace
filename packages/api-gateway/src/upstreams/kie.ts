@@ -37,6 +37,45 @@ function selectKey(byok?: string): string | undefined {
   return byok || process.env.KIE_API_KEY;
 }
 
+/**
+ * Kie has multiple endpoint families depending on model:
+ *  - veo3 / veo3_fast / veo3_lite           → /api/v1/veo/generate (status: /veo/recordInfo)
+ *  - suno*                                  → /api/v1/generate     (suno-specific)
+ *  - everything else (nano-banana-2, sora-2-text-to-video, flux-*,
+ *    midjourney, kling, etc.)               → /api/v1/jobs/createTask (status: /jobs/recordInfo)
+ *
+ * Model strings here are the actual Kie ids — not gateway slugs.
+ */
+type KieFamily = 'jobs' | 'veo' | 'suno';
+
+function familyOf(model: string): KieFamily {
+  const m = model.toLowerCase();
+  if (m.startsWith('veo')) return 'veo';
+  if (m.startsWith('suno')) return 'suno';
+  return 'jobs';
+}
+
+function endpointsFor(family: KieFamily): { create: string; status: (id: string) => string } {
+  switch (family) {
+    case 'veo':
+      return {
+        create: '/api/v1/veo/generate',
+        status: (id) => `/api/v1/veo/recordInfo?taskId=${encodeURIComponent(id)}`,
+      };
+    case 'suno':
+      return {
+        create: '/api/v1/generate',
+        status: (id) => `/api/v1/generate/recordInfo?taskId=${encodeURIComponent(id)}`,
+      };
+    case 'jobs':
+    default:
+      return {
+        create: '/api/v1/jobs/createTask',
+        status: (id) => `/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(id)}`,
+      };
+  }
+}
+
 async function createTask(
   model: string,
   input: Record<string, unknown>,
@@ -44,7 +83,16 @@ async function createTask(
 ): Promise<MediaJob> {
   const apiKey = selectKey(byokKey);
   if (!apiKey) throw new Error('KIE_API_KEY not configured');
-  const url = `${KIE_BASE}/api/v1/jobs/createTask`;
+  const family = familyOf(model);
+  const ep = endpointsFor(family);
+  const url = `${KIE_BASE}${ep.create}`;
+  // veo/suno endpoints typically expect a flat body with `model` + fields,
+  // while /jobs/createTask wraps params in `input`. Send the union — extra
+  // fields are usually ignored by Kie.
+  const body =
+    family === 'jobs'
+      ? { model, input }
+      : { model, ...input };
   const start = Date.now();
   const res = await fetch(url, {
     method: 'POST',
@@ -52,31 +100,34 @@ async function createTask(
       authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model, input }),
+    body: JSON.stringify(body),
   });
   const text = await res.text();
   if (!res.ok) {
-    logger.warn({ model, status: res.status, body: text.slice(0, 500) }, 'kie_submit_error');
-    throw new Error(`Kie createTask ${res.status}: ${text.slice(0, 200)}`);
+    logger.warn(
+      { model, family, url, status: res.status, body: text.slice(0, 500) },
+      'kie_submit_error',
+    );
+    throw new Error(`Kie ${family} ${res.status}: ${text.slice(0, 200)}`);
   }
   let data: { code?: number; msg?: string; data?: { taskId?: string } };
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(`Kie createTask non-JSON: ${text.slice(0, 200)}`);
+    throw new Error(`Kie ${family} non-JSON: ${text.slice(0, 200)}`);
   }
   if (data?.code && data.code !== 200) {
-    throw new Error(`Kie createTask code=${data.code}: ${data.msg ?? 'unknown'}`);
+    throw new Error(`Kie ${family} code=${data.code}: ${data.msg ?? 'unknown'}`);
   }
   const taskId = data?.data?.taskId;
   if (!taskId) {
-    throw new Error(`Kie createTask returned no taskId: ${text.slice(0, 200)}`);
+    throw new Error(`Kie ${family} returned no taskId: ${text.slice(0, 200)}`);
   }
-  logger.info({ model, taskId, ms: Date.now() - start }, 'kie_submit_ok');
+  logger.info({ model, family, taskId, ms: Date.now() - start }, 'kie_submit_ok');
   return {
     status: 'queued',
-    job_id: taskId,
-    poll_url: `${KIE_BASE}/api/v1/jobs/recordInfo?taskId=${taskId}`,
+    job_id: `${family}:${taskId}`,
+    poll_url: `${KIE_BASE}${ep.status(taskId)}`,
   };
 }
 
@@ -111,10 +162,16 @@ function extractUrls(resultJson?: string): string[] {
   return [];
 }
 
-async function pollOnce(jobId: string, byokKey?: string): Promise<MediaJob> {
+async function pollOnce(prefixedJobId: string, byokKey?: string): Promise<MediaJob> {
   const apiKey = selectKey(byokKey);
   if (!apiKey) throw new Error('KIE_API_KEY not configured');
-  const url = `${KIE_BASE}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(jobId)}`;
+  // Job ids are stored as "<family>:<taskId>" so we know which status endpoint
+  // to hit. Older callers passing a bare taskId default to the unified jobs API.
+  const sep = prefixedJobId.indexOf(':');
+  const family: KieFamily = sep > 0 ? (prefixedJobId.slice(0, sep) as KieFamily) : 'jobs';
+  const taskId = sep > 0 ? prefixedJobId.slice(sep + 1) : prefixedJobId;
+  const ep = endpointsFor(family);
+  const url = `${KIE_BASE}${ep.status(taskId)}`;
   const res = await fetch(url, {
     method: 'GET',
     headers: { authorization: `Bearer ${apiKey}` },
@@ -129,19 +186,20 @@ async function pollOnce(jobId: string, byokKey?: string): Promise<MediaJob> {
     const urls = extractUrls(body.data?.resultJson);
     return {
       status: 'completed',
-      job_id: jobId,
+      job_id: prefixedJobId,
       output: urls.length === 1 ? urls[0] : urls.length ? urls : body.data?.resultJson,
     };
   }
   if (s === 'fail' || s === 'failed') {
     return {
       status: 'failed',
-      job_id: jobId,
+      job_id: prefixedJobId,
       error: body.data?.failMsg ?? body.data?.failCode ?? 'kie job failed',
     };
   }
-  // processing | queued | pending | running
-  return { status: s === 'processing' || s === 'running' ? 'processing' : 'queued', job_id: jobId };
+  // processing | queued | pending | running | waiting | queuing | generating
+  const processing = ['processing', 'running', 'generating'].includes(s);
+  return { status: processing ? 'processing' : 'queued', job_id: prefixedJobId };
 }
 
 export const kieUpstream: UpstreamAdapter = {
