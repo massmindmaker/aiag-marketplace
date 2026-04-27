@@ -12,10 +12,8 @@ import {
 import { Button } from '@/components/ui/Button';
 import { SlidersHorizontal } from 'lucide-react';
 import { ModelGrid } from '@/components/marketplace/ModelCard';
-import {
-  FilterPanel,
-  computeFacets,
-} from '@/components/marketplace/FilterPanel';
+import { FilterPanel } from '@/components/marketplace/FilterPanel';
+import { computeFacets } from '@/lib/marketplace/facets';
 import { ActiveFilterChips } from '@/components/marketplace/ActiveFilterChips';
 import { SearchAndSort } from '@/components/marketplace/SearchAndSort';
 import { getAllModels } from '@/lib/marketplace/catalog';

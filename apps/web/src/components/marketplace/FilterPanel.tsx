@@ -8,7 +8,6 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { Label } from '@/components/ui/Label';
 import {
   MODEL_TYPE_LABEL_RU,
-  type CatalogModel,
   type ModelType,
   type HostingRegion,
 } from '@/lib/marketplace/catalog';
@@ -235,23 +234,7 @@ function CheckRow({
   );
 }
 
-// Helper to pre-render this from server data
-export function computeFacets(models: CatalogModel[]): {
-  orgs: Array<{ slug: string; name: string; count: number }>;
-  tags: Array<{ tag: string; count: number }>;
-} {
-  const orgMap = new Map<string, { slug: string; name: string; count: number }>();
-  const tagMap = new Map<string, number>();
-  for (const m of models) {
-    const o = orgMap.get(m.orgSlug);
-    if (o) o.count += 1;
-    else orgMap.set(m.orgSlug, { slug: m.orgSlug, name: m.orgName, count: 1 });
-    for (const t of m.tags) tagMap.set(t, (tagMap.get(t) || 0) + 1);
-  }
-  return {
-    orgs: Array.from(orgMap.values()).sort((a, b) => b.count - a.count),
-    tags: Array.from(tagMap.entries())
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => b.count - a.count),
-  };
-}
+// `computeFacets` moved to `@/lib/marketplace/facets` — exporting a server
+// helper from this `'use client'` file caused server components to import
+// a client reference and crash with "TypeError: f is not a function".
+export { computeFacets } from '@/lib/marketplace/facets';
