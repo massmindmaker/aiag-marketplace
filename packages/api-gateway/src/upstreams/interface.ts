@@ -44,8 +44,57 @@ export type EmbeddingsResponse = {
   usage: { prompt_tokens: number; total_tokens: number };
 };
 
+/** Media generation contracts (image/video/audio). */
+export type ImageRequest = {
+  modelId: string;
+  prompt: string;
+  n?: number;
+  size?: string;
+  negative_prompt?: string;
+  reference_image_url?: string;
+  byokKey?: string | undefined;
+};
+
+export type VideoRequest = {
+  modelId: string;
+  prompt: string;
+  duration_s?: number;
+  aspect_ratio?: string;
+  image_url?: string;
+  byokKey?: string | undefined;
+};
+
+export type AudioSpeechRequest = {
+  modelId: string;
+  input: string;
+  voice?: string;
+  format?: string;
+  byokKey?: string | undefined;
+};
+
+export type AudioTranscriptionRequest = {
+  modelId: string;
+  audio_url?: string;
+  audio_b64?: string;
+  language?: string;
+  byokKey?: string | undefined;
+};
+
+export type MediaJob = {
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  job_id: string;
+  poll_url?: string;
+  output?: unknown;
+  error?: string;
+};
+
 export interface UpstreamAdapter {
   chat(req: ChatRequest): Promise<ChatResponse>;
   chatStream?(req: ChatRequest): AsyncIterable<unknown>;
   embeddings?(req: EmbeddingsRequest): Promise<EmbeddingsResponse>;
+  imageGeneration?(req: ImageRequest): Promise<MediaJob>;
+  videoGeneration?(req: VideoRequest): Promise<MediaJob>;
+  audioSpeech?(req: AudioSpeechRequest): Promise<MediaJob>;
+  audioTranscription?(req: AudioTranscriptionRequest): Promise<MediaJob>;
+  pollJob?(jobId: string, family: 'image' | 'video' | 'suno'): Promise<MediaJob>;
 }

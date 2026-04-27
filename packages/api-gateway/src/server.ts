@@ -17,6 +17,9 @@ import { completions } from './routes/v1/completions';
 import { embeddings } from './routes/v1/embeddings';
 import { models as modelsRoute } from './routes/v1/models';
 import { balance as balanceRoute } from './routes/v1/balance';
+import { images } from './routes/v1/images';
+import { video } from './routes/v1/video';
+import { audio } from './routes/v1/audio';
 
 const bootTime = Date.now();
 
@@ -73,6 +76,9 @@ app.route('/v1/completions', completions);
 app.route('/v1/embeddings', embeddings);
 app.route('/v1/models', modelsRoute);
 app.route('/v1/balance', balanceRoute);
+app.route('/v1/images', images);
+app.route('/v1/video', video);
+app.route('/v1/audio', audio);
 
 app.notFound((c) =>
   c.json(errors.notFound('Route not found').toResponseBody(), 404)

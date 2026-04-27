@@ -13,6 +13,7 @@
 import type { UpstreamAdapter } from './interface';
 import { mockUpstream } from './mock';
 import { openRouterUpstream } from './openrouter';
+import { kieUpstream } from './kie';
 
 export function getUpstream(provider: string): UpstreamAdapter {
   if (process.env.AIAG_FORCE_MOCK === '1') return mockUpstream;
@@ -20,6 +21,8 @@ export function getUpstream(provider: string): UpstreamAdapter {
     case 'openrouter':
       // Only use real adapter if a key is configured; otherwise mock.
       return process.env.OPENROUTER_API_KEY ? openRouterUpstream : mockUpstream;
+    case 'kie':
+      return process.env.KIE_API_KEY ? kieUpstream : mockUpstream;
     default:
       return mockUpstream;
   }
