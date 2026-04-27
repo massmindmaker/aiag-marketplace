@@ -12,13 +12,28 @@ function shouldUseNeon(connectionString: string): boolean {
   return /neon\.tech|vercel-storage\.com/.test(connectionString);
 }
 
+// Detect a local Postgres URL — used to disable SSL for self-hosted DBs that
+// don't terminate TLS (e.g. local docker-compose or a VPS Postgres bound to
+// 127.0.0.1). Without this, `pg-connection-string` v3 escalates `sslmode=prefer`
+// to `verify-full` and the connection fails with
+// "The server does not support SSL connections".
+function isLocalPostgres(connectionString: string): boolean {
+  return /@(localhost|127\.0\.0\.1|\[::1\])[:\/]/i.test(connectionString);
+}
+
 // Create database client
 export function createDb(connectionString: string) {
   if (shouldUseNeon(connectionString)) {
     const sql = neon(connectionString);
     return drizzleNeon(sql, { schema }) as unknown as ReturnType<typeof drizzlePg<typeof schema>>;
   }
-  const pool = new Pool({ connectionString });
+  const poolConfig: ConstructorParameters<typeof Pool>[0] = {
+    connectionString,
+  };
+  if (isLocalPostgres(connectionString)) {
+    poolConfig.ssl = false;
+  }
+  const pool = new Pool(poolConfig);
   return drizzlePg(pool, { schema });
 }
 
