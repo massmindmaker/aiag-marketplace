@@ -2,6 +2,8 @@ import NextAuth from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
+import Yandex from 'next-auth/providers/yandex';
+import VK from 'next-auth/providers/vk';
 import Credentials from 'next-auth/providers/credentials';
 import { db } from './lib/db';
 import { users } from '@aiag/database/schema';
@@ -28,6 +30,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+    Yandex({
+      clientId: process.env.YANDEX_CLIENT_ID,
+      clientSecret: process.env.YANDEX_CLIENT_SECRET,
+    }),
+    VK({
+      clientId: process.env.VK_CLIENT_ID,
+      clientSecret: process.env.VK_CLIENT_SECRET,
     }),
     Credentials({
       name: 'credentials',
