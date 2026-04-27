@@ -110,5 +110,5 @@ if (process.env.NODE_ENV !== 'test') {
 export default {
   port: config.PORT,
   fetch: app.fetch,
-  idleTimeout: 60_000,
+  idleTimeout: 60,
 };
