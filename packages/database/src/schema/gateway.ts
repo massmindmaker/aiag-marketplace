@@ -15,6 +15,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  bigserial,
 } from 'drizzle-orm/pg-core';
 import { organizations } from './organizations';
 
@@ -326,9 +327,30 @@ export const batches = pgTable(
 );
 
 // -----------------------------------------------------------------------------
+// upstream_health (Plan 03 worker probes)
+// -----------------------------------------------------------------------------
+export const upstreamHealth = pgTable(
+  'upstream_health',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    upstreamId: varchar('upstream_id', { length: 64 })
+      .notNull()
+      .references(() => upstreams.id, { onDelete: 'cascade' }),
+    checkedAt: timestamp('checked_at', { withTimezone: true }).notNull().defaultNow(),
+    ok: boolean('ok').notNull(),
+    latencyMs: integer('latency_ms'),
+    error: text('error'),
+  },
+  (t) => ({
+    recentIdx: index('idx_upstream_health_recent').on(t.upstreamId, t.checkedAt),
+  })
+);
+
+// -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 export type Upstream = typeof upstreams.$inferSelect;
+export type UpstreamHealth = typeof upstreamHealth.$inferSelect;
 export type GatewayModel = typeof gatewayModels.$inferSelect;
 export type ModelUpstream = typeof modelUpstreams.$inferSelect;
 export type GatewayApiKey = typeof gatewayApiKeys.$inferSelect;
