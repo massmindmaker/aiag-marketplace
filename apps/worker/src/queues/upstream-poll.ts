@@ -76,7 +76,9 @@ export function buildUpstreamPollProcessor(
     if (result.status === 'pending') {
       // Re-queue with exponential-ish backoff: 5s → 10s → 15s → … capped at 30s.
       const next = Math.min(30_000, (pollIntervalMs ?? 5000) + 5000);
-      await job.queue?.add(
+      // bullmq marks job.queue as protected; reach through any to schedule a
+      // delayed retry with the same payload.
+      await (job as unknown as { queue?: { add: (name: string, data: unknown, opts: unknown) => Promise<unknown> } }).queue?.add(
         job.name,
         { ...job.data, pollIntervalMs: next },
         { delay: next }

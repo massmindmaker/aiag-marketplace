@@ -67,7 +67,7 @@ export function buildWebhookRetryProcessor(
 
     if (!result.ok && attempt < MAX_WEBHOOK_ATTEMPTS) {
       const delay = nextDelayMs(attempt);
-      await job.queue?.add(
+      await (job as unknown as { queue?: { add: (name: string, data: unknown, opts: unknown) => Promise<unknown> } }).queue?.add(
         job.name,
         { ...job.data, attempt },
         { delay }
