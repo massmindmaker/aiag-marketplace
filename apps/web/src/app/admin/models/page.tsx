@@ -39,8 +39,8 @@ async function getModels(typeFilter?: string): Promise<ModelRow[]> {
       ${where}
       ORDER BY m.type, m.slug
     `);
-    const rows =
-      (result as { rows?: ModelRow[] }).rows ?? (result as ModelRow[]);
+    const r = result as unknown as { rows?: ModelRow[] } | ModelRow[];
+    const rows = Array.isArray(r) ? r : r.rows ?? [];
     return rows ?? [];
   } catch {
     return [];

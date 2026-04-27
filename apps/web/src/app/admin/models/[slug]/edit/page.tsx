@@ -43,8 +43,8 @@ async function getData(slug: string) {
     SELECT id, slug, type, enabled, display_name, description
     FROM models WHERE slug = ${slug} LIMIT 1
   `);
-  const modelRows =
-    (modelRes as { rows?: ModelRow[] }).rows ?? (modelRes as ModelRow[]);
+  const mr = modelRes as unknown as { rows?: ModelRow[] } | ModelRow[];
+  const modelRows = Array.isArray(mr) ? mr : mr.rows ?? [];
   const model = modelRows?.[0];
   if (!model) return null;
 
@@ -55,15 +55,13 @@ async function getData(slug: string) {
     FROM model_upstreams WHERE model_id = ${model.id}
     ORDER BY upstream_id
   `);
-  const upstreams =
-    ((upRes as { rows?: UpstreamRow[] }).rows ?? (upRes as UpstreamRow[])) ??
-    [];
+  const ur = upRes as unknown as { rows?: UpstreamRow[] } | UpstreamRow[];
+  const upstreams = Array.isArray(ur) ? ur : ur.rows ?? [];
 
   const allUpRes = await db.execute(sql`SELECT id, provider FROM upstreams ORDER BY id`);
-  const allUpstreams =
-    ((allUpRes as { rows?: Array<{ id: string; provider: string }> }).rows ??
-      (allUpRes as Array<{ id: string; provider: string }>)) ??
-    [];
+  type UpRow = { id: string; provider: string };
+  const aur = allUpRes as unknown as { rows?: UpRow[] } | UpRow[];
+  const allUpstreams = Array.isArray(aur) ? aur : aur.rows ?? [];
 
   return { model, upstreams, allUpstreams };
 }
