@@ -1,43 +1,32 @@
-'use client';
-
-import { Typography, Box } from '@mui/material';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface LogoProps {
+  href?: string;
+  className?: string;
+  /** Backwards-compat: ignored. Logo is responsive by default. */
   ismobile?: boolean;
+  /** Backwards-compat: ignored. Logo always shows wordmark on >=sm. */
   long?: boolean;
 }
 
-const Logo = ({ ismobile, long }: LogoProps) => {
+/**
+ * AIAG wordmark logo.
+ * Plan 09 — replaces MUI/img-based logo. Pure text + amber accent on `.ru`.
+ */
+const Logo = ({ href = '/', className }: LogoProps) => {
   return (
-    <Box sx={{ p: 0, display: 'flex', alignItems: 'center' }}>
-      {ismobile ? (
-        <Box>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
-        </Box>
-      ) : long ? (
-        <Box
-          sx={{
-            width: '255px',
-            flexWrap: 'nowrap',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'start',
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
-          <Typography sx={{ pl: 2 }} fontWeight="fontWeightBold" variant="h6" color="#222">
-            Ai-Aggregator
-          </Typography>
-        </Box>
-      ) : (
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/ai_logo_v1.png" alt="Ai-aggregator" width={32} height={32} />
-        </Box>
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex items-center font-mono font-bold tracking-tight text-foreground hover:text-foreground/90 transition-colors',
+        className
       )}
-    </Box>
+      aria-label="AI Aggregator — на главную"
+    >
+      <span>ai-aggregator</span>
+      <span className="text-primary">.ru</span>
+    </Link>
   );
 };
 

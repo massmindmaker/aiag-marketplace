@@ -1,435 +1,246 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Switch,
-  Chip,
-  Grid,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import Link from 'next/link';
+import { Check, Sparkles, ArrowRight } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/Button';
+import { Switch } from '@/components/ui/Switch';
+import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/lib/utils';
 
-const PageContainer = styled(Box)(({ theme }) => ({
-  minHeight: '100vh',
-  backgroundColor: '#f8f8f8',
-  paddingTop: theme.spacing(8),
-  paddingBottom: theme.spacing(8),
-}));
-
-const PricingCard = styled(Card, {
-  shouldForwardProp: (prop) => prop !== 'isPopular',
-})<{ isPopular?: boolean }>(({ isPopular }) => ({
-  position: 'relative',
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  borderRadius: '16px',
-  border: isPopular ? '2px solid #00efdf' : '1px solid #e0e0e0',
-  boxShadow: isPopular
-    ? '0 8px 24px rgba(0, 239, 223, 0.25)'
-    : '0 4px 12px rgba(0, 0, 0, 0.08)',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  '&:hover': {
-    transform: 'translateY(-8px) scale(1.02)',
-    boxShadow: isPopular
-      ? '0 16px 40px rgba(0, 239, 223, 0.35)'
-      : '0 12px 32px rgba(0, 0, 0, 0.15)',
-  },
-}));
-
-const PopularBadge = styled(Chip)(() => ({
-  position: 'absolute',
-  top: -12,
-  right: 24,
-  background: 'linear-gradient(135deg, #00efdf 0%, #0ff 100%)',
-  color: '#000',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  height: '28px',
-  boxShadow: '0 4px 12px rgba(0, 239, 223, 0.4)',
-}));
-
-const PriceBox = styled(Box)(({ theme }) => ({
-  marginTop: theme.spacing(3),
-  marginBottom: theme.spacing(3),
-}));
-
-const PriceAmount = styled(Typography)(({ theme }) => ({
-  fontSize: '3rem',
-  fontWeight: 700,
-  color: '#333',
-  lineHeight: 1,
-  display: 'flex',
-  alignItems: 'baseline',
-  gap: theme.spacing(0.5),
-}));
-
-const PriceCurrency = styled('span')(() => ({
-  fontSize: '1.5rem',
-  fontWeight: 600,
-  color: '#666',
-}));
-
-const PricePeriod = styled(Typography)(({ theme }) => ({
-  fontSize: '1rem',
-  color: '#666',
-  marginTop: theme.spacing(1),
-}));
-
-const OldPrice = styled(Typography)(({ theme }) => ({
-  fontSize: '1rem',
-  color: '#999',
-  textDecoration: 'line-through',
-  marginTop: theme.spacing(0.5),
-}));
-
-const DiscountBadge = styled(Chip)(({ theme }) => ({
-  marginTop: theme.spacing(1),
-  background: 'linear-gradient(135deg, rgba(150, 246, 215, 1) 0%, rgba(153, 230, 231, 1) 100%)',
-  color: '#000',
-  fontWeight: 600,
-  fontSize: '0.75rem',
-}));
-
-const FeatureList = styled(List)(({ theme }) => ({
-  flexGrow: 1,
-  paddingTop: theme.spacing(2),
-  paddingBottom: theme.spacing(2),
-}));
-
-const FeatureItem = styled(ListItem)(({ theme }) => ({
-  padding: theme.spacing(1, 0),
-}));
-
-const FeatureIcon = styled(ListItemIcon)(() => ({
-  minWidth: '36px',
-  color: '#00efdf',
-}));
-
-const ToggleContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginBottom: theme.spacing(6),
-  gap: theme.spacing(2),
-}));
-
-const BillingText = styled(Typography, {
-  shouldForwardProp: (prop) => prop !== 'isActive',
-})<{ isActive?: boolean }>(({ isActive }) => ({
-  fontSize: '1.125rem',
-  fontWeight: isActive ? 600 : 400,
-  color: isActive ? '#333' : '#999',
-  transition: 'all 0.3s ease',
-}));
-
-const CustomSwitch = styled(Switch)(() => ({
-  width: 62,
-  height: 34,
-  padding: 7,
-  '& .MuiSwitch-switchBase': {
-    margin: 1,
-    padding: 0,
-    transform: 'translateX(6px)',
-    '&.Mui-checked': {
-      color: '#fff',
-      transform: 'translateX(22px)',
-      '& .MuiSwitch-thumb:before': {
-        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
-          '#fff',
-        )}" d="M4.2 2.5l-.7 1.8-1.8.7 1.8.7.7 1.8.6-1.8L6.7 5l-1.9-.7-.6-1.8zm15 8.3a6.7 6.7 0 11-6.6-6.6 5.8 5.8 0 006.6 6.6z"/></svg>')`,
-      },
-      '& + .MuiSwitch-track': {
-        opacity: 1,
-        backgroundColor: '#00efdf',
-      },
-    },
-  },
-  '& .MuiSwitch-thumb': {
-    backgroundColor: '#555',
-    width: 32,
-    height: 32,
-    '&:before': {
-      content: "''",
-      position: 'absolute',
-      width: '100%',
-      height: '100%',
-      left: 0,
-      top: 0,
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
-      backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
-        '#fff',
-      )}" d="M9.305 1.667V3.75h1.389V1.667h-1.39zm-4.707 1.95l-.982.982L5.09 6.072l.982-.982-1.473-1.473zm10.802 0L13.927 5.09l.982.982 1.473-1.473-.982-.982zM10 5.139a4.872 4.872 0 00-4.862 4.86A4.872 4.872 0 0010 14.862 4.872 4.872 0 0014.86 10 4.872 4.872 0 0010 5.139zm0 1.389A3.462 3.462 0 0113.471 10a3.462 3.462 0 01-3.473 3.472A3.462 3.462 0 016.527 10 3.462 3.462 0 0110 6.528zM1.665 9.305v1.39h2.083v-1.39H1.666zm14.583 0v1.39h2.084v-1.39h-2.084zM5.09 13.928L3.616 15.4l.982.982 1.473-1.473-.982-.982zm9.82 0l-.982.982 1.473 1.473.982-.982-1.473-1.473zM9.305 16.25v2.083h1.389V16.25h-1.39z"/></svg>')`,
-    },
-  },
-  '& .MuiSwitch-track': {
-    opacity: 1,
-    backgroundColor: '#00efdf',
-    borderRadius: 20 / 2,
-  },
-}));
-
-const ActionButton = styled(Button, {
-  shouldForwardProp: (prop) => prop !== 'isPrimary',
-})<{ isPrimary?: boolean }>(({ theme, isPrimary }) => ({
-  borderRadius: '8px',
-  padding: theme.spacing(1.5, 4),
-  fontSize: '1rem',
-  fontWeight: 600,
-  textTransform: 'none',
-  transition: 'all 0.3s ease',
-  ...(isPrimary
-    ? {
-        background: 'linear-gradient(135deg, #00efdf 0%, #0ff 100%)',
-        color: '#000',
-        border: '1px solid #00efdf',
-        '&:hover': {
-          background: '#fff',
-          border: '1px solid #0ff',
-          transform: 'translateY(-2px)',
-          boxShadow: '0 8px 16px rgba(0, 239, 223, 0.3)',
-        },
-      }
-    : {
-        background: 'transparent',
-        color: '#555',
-        border: '1px solid #555',
-        '&:hover': {
-          background: '#f8f8f8',
-          border: '1px solid #00efdf',
-          transform: 'translateY(-2px)',
-        },
-      }),
-}));
-
-interface PricingTier {
+interface Tier {
   name: string;
   monthlyPrice: number;
   yearlyPrice: number;
-  tokens: string;
+  tagline: string;
+  credits: string;
   features: string[];
+  cta: string;
+  ctaHref: string;
   isPopular?: boolean;
+  isContact?: boolean;
 }
 
-const pricingTiers: PricingTier[] = [
+// Финальные тарифы из Knowledge/14-pricing-validation.md
+const tiers: Tier[] = [
   {
     name: 'Free',
     monthlyPrice: 0,
     yearlyPrice: 0,
-    tokens: '1 000 токенов/месяц',
+    tagline: 'Попробовать без регистрации карты',
+    credits: '200 кредитов',
     features: [
-      'API доступ',
-      '1 000 токенов',
-      'Базовые модели',
-      'Email поддержка',
+      '500 запросов в день',
+      '10 запросов в минуту',
+      'Доступ к Llama, DeepSeek, gpt-oss',
+      'Email-поддержка',
     ],
-    isPopular: false,
+    cta: 'Начать бесплатно',
+    ctaHref: '/register',
   },
   {
-    name: 'Pro',
+    name: 'Basic',
     monthlyPrice: 990,
     yearlyPrice: 9900,
-    tokens: '50 000 токенов/месяц',
+    tagline: 'Для пет-проектов и MVP',
+    credits: '1 200 кредитов / мес',
     features: [
-      'Всё из Free',
-      '50 000 токенов',
-      'Все модели',
-      'Приоритетная поддержка',
-      'Аналитика использования',
+      'Все модели платформы',
+      '60 запросов в минуту',
+      'Webhooks и события',
+      'Чат-поддержка в Telegram',
     ],
+    cta: 'Выбрать Basic',
+    ctaHref: '/register?plan=basic',
+  },
+  {
+    name: 'Starter',
+    monthlyPrice: 2490,
+    yearlyPrice: 24900,
+    tagline: 'Для растущих команд',
+    credits: '3 200 кредитов / мес',
+    features: [
+      'Всё из Basic',
+      'Приоритет в роутинге',
+      '300 запросов в минуту',
+      'BYOK для своих API-ключей',
+      'Аналитика расходов',
+    ],
+    cta: 'Выбрать Starter',
+    ctaHref: '/register?plan=starter',
     isPopular: true,
   },
   {
-    name: 'Business',
-    monthlyPrice: 4990,
-    yearlyPrice: 49900,
-    tokens: '500 000 токенов/месяц',
+    name: 'Pro',
+    monthlyPrice: 6990,
+    yearlyPrice: 69900,
+    tagline: 'Для продуктовых команд',
+    credits: '10 000 кредитов / мес',
     features: [
-      'Всё из Pro',
-      '500 000 токенов',
+      'Всё из Starter',
+      '500 запросов в минуту',
+      'Retention логов 90 дней',
       'Выделенный менеджер',
-      'SLA 99.9%',
-      'Кастомные интеграции',
+      'Custom rate-limits',
     ],
-    isPopular: false,
+    cta: 'Выбрать Pro',
+    ctaHref: '/register?plan=pro',
   },
 ];
+
+function formatPrice(n: number) {
+  return n.toLocaleString('ru-RU');
+}
 
 export default function PricingPage() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('ru-RU');
-  };
-
-  const calculateYearlyMonthly = (yearlyPrice: number) => {
-    return Math.round(yearlyPrice / 12);
-  };
-
-  const calculateDiscount = (monthlyPrice: number, yearlyPrice: number) => {
-    if (monthlyPrice === 0) return 0;
-    const yearlyEquivalent = monthlyPrice * 12;
-    const discount = Math.round(((yearlyEquivalent - yearlyPrice) / yearlyEquivalent) * 100);
-    return discount;
-  };
-
   return (
     <MainLayout>
-      <PageContainer>
-        <Container maxWidth="lg">
-          <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Typography
-              variant="h2"
-              sx={{
-                fontWeight: 700,
-                color: '#333',
-                mb: 2,
-                fontSize: { xs: '2rem', md: '3rem' },
-              }}
+      <section className="container mx-auto max-w-7xl px-4 py-16 md:py-20">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <Badge
+            variant="outline"
+            className="rounded-full border-primary/40 text-primary px-3 py-1 mb-4"
+          >
+            Прозрачные тарифы
+          </Badge>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            Платите за то, что используете
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Pay-per-request в рублях. Подписки дают бонус-кредиты, повышенный
+            rate-limit и приоритет в роутинге. Free-tier — без карты.
+          </p>
+
+          <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-border bg-card p-1.5 px-4">
+            <span
+              className={cn(
+                'text-sm transition-colors',
+                !isYearly ? 'text-foreground font-medium' : 'text-muted-foreground'
+              )}
             >
-              Тарифные планы
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                color: '#666',
-                mb: 4,
-                fontSize: { xs: '1rem', md: '1.25rem' },
-              }}
+              Ежемесячно
+            </span>
+            <Switch checked={isYearly} onCheckedChange={setIsYearly} aria-label="Переключить ежегодную оплату" />
+            <span
+              className={cn(
+                'text-sm transition-colors',
+                isYearly ? 'text-foreground font-medium' : 'text-muted-foreground'
+              )}
             >
-              Выберите подходящий тариф для вашего проекта
-            </Typography>
+              Ежегодно
+            </span>
+            <Badge className="ms-1 bg-primary/15 text-primary border-primary/30 hover:bg-primary/15">
+              −15%
+            </Badge>
+          </div>
+        </div>
 
-            <ToggleContainer>
-              <BillingText isActive={!isYearly}>Ежемесячно</BillingText>
-              <CustomSwitch
-                checked={isYearly}
-                onChange={(e) => setIsYearly(e.target.checked)}
-              />
-              <BillingText isActive={isYearly}>
-                Ежегодно
-                <Chip
-                  label="Скидка 17%"
-                  size="small"
-                  sx={{
-                    ml: 1,
-                    background: 'linear-gradient(135deg, #00efdf 0%, #0ff 100%)',
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: '0.75rem',
-                  }}
-                />
-              </BillingText>
-            </ToggleContainer>
-          </Box>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {tiers.map((tier) => {
+            const displayPrice = isYearly
+              ? Math.round(tier.yearlyPrice / 12)
+              : tier.monthlyPrice;
 
-          <Grid container spacing={4} alignItems="stretch">
-            {pricingTiers.map((tier) => {
-              const displayPrice = isYearly ? calculateYearlyMonthly(tier.yearlyPrice) : tier.monthlyPrice;
-              const discount = calculateDiscount(tier.monthlyPrice, tier.yearlyPrice);
+            return (
+              <div
+                key={tier.name}
+                className={cn(
+                  'relative flex flex-col rounded-2xl border bg-card p-6 transition-all',
+                  tier.isPopular
+                    ? 'border-primary/60 shadow-[0_0_0_1px_rgba(245,158,11,0.4),0_24px_64px_-16px_rgba(245,158,11,0.25)]'
+                    : 'border-border hover:border-primary/30'
+                )}
+              >
+                {tier.isPopular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground border-0 shadow-md">
+                      <Sparkles className="me-1 h-3 w-3" /> Популярный
+                    </Badge>
+                  </div>
+                )}
 
-              return (
-                <Grid item xs={12} md={4} key={tier.name}>
-                  <PricingCard isPopular={tier.isPopular}>
-                    {tier.isPopular && <PopularBadge label="Популярный" />}
+                <div className="mb-1">
+                  <h3 className="text-xl font-semibold">{tier.name}</h3>
+                  <p className="text-sm text-muted-foreground">{tier.tagline}</p>
+                </div>
 
-                    <CardContent sx={{ flexGrow: 1, pt: 4, pb: 2 }}>
-                      <Typography
-                        variant="h5"
-                        sx={{
-                          fontWeight: 600,
-                          color: '#555',
-                          mb: 1,
-                        }}
-                      >
-                        {tier.name}
-                      </Typography>
+                <div className="mt-5 mb-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-4xl font-bold tracking-tight">
+                      {formatPrice(displayPrice)}
+                    </span>
+                    <span className="text-lg text-muted-foreground">₽</span>
+                    <span className="text-sm text-muted-foreground">/мес</span>
+                  </div>
+                  {isYearly && tier.monthlyPrice > 0 && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      <span className="line-through">
+                        {formatPrice(tier.monthlyPrice)} ₽
+                      </span>{' '}
+                      при годовой оплате
+                    </div>
+                  )}
+                  <div className="mt-3 inline-flex items-center rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-mono text-primary">
+                    {tier.credits}
+                  </div>
+                </div>
 
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: '#666',
-                          mb: 2,
-                        }}
-                      >
-                        {tier.tokens}
-                      </Typography>
+                <ul className="mt-5 space-y-2.5 flex-1">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-foreground/90">{f}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                      <PriceBox>
-                        <PriceAmount>
-                          {formatPrice(displayPrice)}
-                          <PriceCurrency>₽</PriceCurrency>
-                        </PriceAmount>
-                        <PricePeriod>
-                          {isYearly ? 'в месяц при годовой оплате' : 'в месяц'}
-                        </PricePeriod>
+                <Button
+                  asChild
+                  className="mt-6 w-full"
+                  variant={tier.isPopular ? 'default' : 'outline'}
+                  size="lg"
+                >
+                  <Link href={tier.ctaHref}>
+                    {tier.cta}
+                    <ArrowRight className="ms-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            );
+          })}
+        </div>
 
-                        {isYearly && tier.yearlyPrice > 0 && (
-                          <>
-                            <OldPrice>
-                              {formatPrice(tier.monthlyPrice)}₽/месяц
-                            </OldPrice>
-                            <DiscountBadge label={`Экономия ${discount}%`} size="small" />
-                          </>
-                        )}
-                      </PriceBox>
+        {/* Enterprise / Business contact */}
+        <div className="mt-10 rounded-2xl border border-border bg-card/60 p-8 md:p-10 flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex-1">
+            <h3 className="text-xl md:text-2xl font-semibold">
+              Business / Enterprise
+            </h3>
+            <p className="text-muted-foreground mt-2">
+              SLA 99.5%, выделенные ресурсы, счёт юрлицу, кастомные SLA и
+              roadmap. От 29 900 ₽/мес.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button asChild size="lg" variant="outline">
+              <a href="mailto:team@ai-aggregator.ru?subject=Business plan">
+                Обсудить условия
+              </a>
+            </Button>
+            <Button asChild size="lg" variant="ghost">
+              <Link href="/docs">Посмотреть docs</Link>
+            </Button>
+          </div>
+        </div>
 
-                      <FeatureList>
-                        {tier.features.map((feature, index) => (
-                          <FeatureItem key={index} disableGutters>
-                            <FeatureIcon>
-                              <CheckCircleIcon />
-                            </FeatureIcon>
-                            <ListItemText
-                              primary={feature}
-                              primaryTypographyProps={{
-                                fontSize: '0.95rem',
-                                color: '#333',
-                              }}
-                            />
-                          </FeatureItem>
-                        ))}
-                      </FeatureList>
-                    </CardContent>
-
-                    <CardActions sx={{ p: 3, pt: 0 }}>
-                      <ActionButton
-                        variant="contained"
-                        fullWidth
-                        isPrimary={tier.isPopular}
-                      >
-                        {tier.monthlyPrice === 0 ? 'Начать бесплатно' : 'Выбрать план'}
-                      </ActionButton>
-                    </CardActions>
-                  </PricingCard>
-                </Grid>
-              );
-            })}
-          </Grid>
-
-          <Box sx={{ mt: 8, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
-              Все планы включают доступ к API и базовую техническую поддержку
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#999' }}>
-              Нужен индивидуальный план? Свяжитесь с нами для обсуждения корпоративных условий
-            </Typography>
-          </Box>
-        </Container>
-      </PageContainer>
+        <p className="mt-10 text-center text-sm text-muted-foreground">
+          Все тарифы включают доступ к OpenAI-совместимому API, RU-residency
+          для критичных моделей и оплату в рублях.
+        </p>
+      </section>
     </MainLayout>
   );
 }

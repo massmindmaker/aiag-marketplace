@@ -1,18 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Email as EmailIcon } from '@mui/icons-material';
 import Link from 'next/link';
+import { ArrowLeft, Mail, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Card, CardContent } from '@/components/ui/Card';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -24,10 +19,9 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
       // TODO: Implement actual password reset API
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       setIsSuccess(true);
     } catch {
       setError('Произошла ошибка. Попробуйте позже.');
@@ -37,115 +31,95 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: '#fafafa',
-        py: 4,
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2 }}>
-          <Button
-            component={Link}
-            href="/login"
-            startIcon={<ArrowBackIcon />}
-            sx={{ mb: 3, color: '#666' }}
-          >
-            Назад к входу
-          </Button>
+    <div className="min-h-screen flex items-center justify-center bg-background py-8 px-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <span className="text-3xl font-mono font-bold tracking-tight">
+              ai-aggregator<span className="text-primary">.ru</span>
+            </span>
+          </Link>
+        </div>
 
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box
-              sx={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                bgcolor: '#00efdf20',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mx: 'auto',
-                mb: 2,
-              }}
+        <Card className="shadow-lg">
+          <CardContent className="p-8">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="-ms-2 mb-4 text-muted-foreground"
             >
-              <EmailIcon sx={{ fontSize: 32, color: '#00efdf' }} />
-            </Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: '#333', mb: 1 }}>
-              Восстановление пароля
-            </Typography>
-            <Typography variant="body1" sx={{ color: '#666' }}>
-              Введите email, указанный при регистрации
-            </Typography>
-          </Box>
+              <Link href="/login">
+                <ArrowLeft className="me-2 h-4 w-4" />
+                Назад к входу
+              </Link>
+            </Button>
 
-          {isSuccess ? (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              Инструкции по восстановлению пароля отправлены на {email}.
-              Проверьте почту.
-            </Alert>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
-                  {error}
-                </Alert>
-              )}
+            <div className="text-center mb-6">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">
+                <Mail className="h-6 w-6" />
+              </div>
+              <h1 className="text-2xl font-semibold">Восстановление пароля</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Введите email, указанный при регистрации
+              </p>
+            </div>
 
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                sx={{
-                  mb: 3,
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': { borderColor: '#00efdf' },
-                    '&.Mui-focused fieldset': { borderColor: '#00efdf' },
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': { color: '#00efdf' },
-                }}
-              />
-
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                disabled={isLoading || !email}
-                sx={{
-                  py: 1.5,
-                  bgcolor: '#00efdf',
-                  color: '#000',
-                  fontWeight: 600,
-                  '&:hover': { bgcolor: '#00d4c5' },
-                  '&:disabled': { bgcolor: '#ccc' },
-                }}
-              >
-                {isLoading ? (
-                  <CircularProgress size={24} sx={{ color: '#666' }} />
-                ) : (
-                  'Отправить инструкции'
+            {isSuccess ? (
+              <Alert>
+                <AlertDescription>
+                  Инструкции по восстановлению пароля отправлены на{' '}
+                  <span className="font-mono">{email}</span>. Проверьте почту.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
-              </Button>
-            </form>
-          )}
 
-          <Typography
-            variant="body2"
-            sx={{ textAlign: 'center', mt: 3, color: '#888' }}
-          >
-            Вспомнили пароль?{' '}
-            <Link href="/login" style={{ color: '#00efdf', textDecoration: 'none' }}>
-              Войти
-            </Link>
-          </Typography>
-        </Paper>
-      </Container>
-    </Box>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full mt-2"
+                  size="lg"
+                  disabled={isLoading || !email}
+                  loading={isLoading}
+                  leftIcon={
+                    isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : undefined
+                  }
+                >
+                  Отправить инструкции
+                </Button>
+              </form>
+            )}
+
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Вспомнили пароль?{' '}
+              <Link href="/login" className="text-primary hover:underline">
+                Войти
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

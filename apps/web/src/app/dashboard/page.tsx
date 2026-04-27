@@ -1,534 +1,274 @@
 'use client';
 
-import React from 'react';
+import Link from 'next/link';
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  CircularProgress,
+  Wallet,
+  TrendingUp,
+  Zap,
+  Stars,
+  Plus,
+  KeyRound,
+  ArrowUpRight,
+  RefreshCw,
+} from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Progress } from '@/components/ui/Progress';
+import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
+  TableHeader,
   TableRow,
-  Paper,
-  Chip,
-  LinearProgress,
-  IconButton,
-  Avatar,
-} from '@mui/material';
-import {
-  AccountBalanceWallet,
-  TrendingUp,
-  Code,
-  Stars,
-  Refresh,
-  Settings,
-  VpnKey,
-  PaymentOutlined,
-  UpgradeOutlined,
-} from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-import MainLayout from '@/components/layout/MainLayout';
+} from '@/components/ui/Table';
 
-// Styled components with animations
-const StyledCard = styled(Card)(() => ({
-  height: '100%',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: '0 12px 24px rgba(0, 239, 223, 0.15)',
-  },
-}));
-
-const StatCard = styled(Card)(() => ({
-  height: '100%',
-  background: 'linear-gradient(135deg, #555 0%, #333 100%)',
-  color: '#fff',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  position: 'relative',
-  overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '100px',
-    height: '100px',
-    background: 'radial-gradient(circle, rgba(0, 239, 223, 0.2) 0%, transparent 70%)',
-    borderRadius: '50%',
-    transform: 'translate(30%, -30%)',
-  },
-  '&:hover': {
-    transform: 'scale(1.02)',
-    boxShadow: '0 8px 16px rgba(0, 239, 223, 0.2)',
-  },
-}));
-
-const ActionButton = styled(Button)(() => ({
-  background: 'linear-gradient(135deg, #555 0%, #333 100%)',
-  color: '#00efdf',
-  border: '1px solid #00efdf',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    background: 'linear-gradient(135deg, #00efdf 0%, #0ff 100%)',
-    color: '#333',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(0, 239, 223, 0.3)',
-  },
-}));
-
-const CircularProgressWithLabel = ({ value }: { value: number }) => {
-  return (
-    <Box position="relative" display="inline-flex">
-      <CircularProgress
-        variant="determinate"
-        value={value}
-        size={120}
-        thickness={4}
-        sx={{
-          color: '#00efdf',
-          '& .MuiCircularProgress-circle': {
-            strokeLinecap: 'round',
-          },
-        }}
-      />
-      <Box
-        sx={{
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 0,
-          position: 'absolute',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-        }}
-      >
-        <Typography variant="h4" component="div" color="#00efdf" fontWeight="bold">
-          {`${Math.round(value)}%`}
-        </Typography>
-        <Typography variant="caption" color="#999">
-          использовано
-        </Typography>
-      </Box>
-    </Box>
-  );
-};
-
-// Mock data
-const mockStats = {
-  tokens: {
-    used: 750000,
-    total: 1000000,
-    percentage: 75,
-  },
+const stats = {
+  credits: { used: 750, total: 1200, percent: Math.round((750 / 1200) * 100) },
   apiCalls: 1234,
   activeModels: 3,
-  plan: 'Профессиональный',
+  plan: 'Starter',
 };
 
-const mockRecentCalls = [
+const recentCalls = [
   {
     id: 1,
-    timestamp: '2025-12-07 14:23:15',
-    model: 'GPT-4',
+    timestamp: '2026-04-26 14:23:15',
+    model: 'gpt-4o-mini',
     tokens: 1250,
     status: 'success',
     endpoint: '/v1/chat/completions',
   },
   {
     id: 2,
-    timestamp: '2025-12-07 14:15:42',
-    model: 'Claude Sonnet',
+    timestamp: '2026-04-26 14:15:42',
+    model: 'claude-sonnet-4',
     tokens: 890,
     status: 'success',
     endpoint: '/v1/chat/completions',
   },
   {
     id: 3,
-    timestamp: '2025-12-07 13:58:30',
-    model: 'GPT-3.5',
+    timestamp: '2026-04-26 13:58:30',
+    model: 'gpt-4o-mini',
     tokens: 450,
     status: 'success',
     endpoint: '/v1/chat/completions',
   },
   {
     id: 4,
-    timestamp: '2025-12-07 13:42:18',
-    model: 'GPT-4',
+    timestamp: '2026-04-26 13:42:18',
+    model: 'flux-1.1-pro',
     tokens: 2100,
     status: 'error',
-    endpoint: '/v1/chat/completions',
+    endpoint: '/v1/images/generations',
   },
   {
     id: 5,
-    timestamp: '2025-12-07 13:30:05',
-    model: 'Claude Opus',
+    timestamp: '2026-04-26 13:30:05',
+    model: 'yandexgpt-pro',
     tokens: 1680,
     status: 'success',
     endpoint: '/v1/chat/completions',
   },
 ];
 
+function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <div className="mt-2 text-3xl font-bold tracking-tight">
+              {value}
+            </div>
+            {hint && (
+              <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+            )}
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+        {children && <div className="mt-4">{children}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   return (
     <MainLayout>
-      <Box sx={{ p: 4 }}>
-        {/* Welcome Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, color: '#333' }}>
-            Добро пожаловать, Пользователь
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Обзор вашего аккаунта и использования API
-          </Typography>
-        </Box>
+      <section className="container mx-auto max-w-7xl px-4 py-8 md:py-12">
+        {/* Header */}
+        <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              Личный кабинет
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Обзор расходов, баланса и последних запросов
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" leftIcon={<KeyRound className="h-4 w-4" />}>
+              API-ключи
+            </Button>
+            <Button leftIcon={<Plus className="h-4 w-4" />}>Пополнить</Button>
+          </div>
+        </header>
 
-        {/* Stats Cards Row */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard elevation={3}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar sx={{ bgcolor: '#00efdf', color: '#333', mr: 2 }}>
-                    <AccountBalanceWallet />
-                  </Avatar>
-                  <Typography variant="h6">Токены</Typography>
-                </Box>
-                <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold', color: '#00efdf' }}>
-                  {mockStats.tokens.used.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#aaa' }}>
-                  из {mockStats.tokens.total.toLocaleString()}
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={mockStats.tokens.percentage}
-                  sx={{
-                    mt: 2,
-                    height: 6,
-                    borderRadius: 3,
-                    bgcolor: '#444',
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: '#00efdf',
-                    },
-                  }}
-                />
-              </CardContent>
-            </StatCard>
-          </Grid>
+        {/* Stats grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            label="Кредиты"
+            value={stats.credits.used.toLocaleString('ru-RU')}
+            hint={`из ${stats.credits.total.toLocaleString('ru-RU')} в этом месяце`}
+            icon={Wallet}
+          >
+            <Progress value={stats.credits.percent} className="h-1.5" />
+          </StatCard>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard elevation={3}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar sx={{ bgcolor: '#0ff', color: '#333', mr: 2 }}>
-                    <TrendingUp />
-                  </Avatar>
-                  <Typography variant="h6">API вызовы</Typography>
-                </Box>
-                <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold', color: '#0ff' }}>
-                  {mockStats.apiCalls.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#aaa' }}>
-                  в этом месяце
-                </Typography>
-                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                  <TrendingUp sx={{ fontSize: 16, mr: 0.5, color: '#0ff' }} />
-                  <Typography variant="caption" sx={{ color: '#0ff' }}>
-                    +12.5% от прошлого месяца
-                  </Typography>
-                </Box>
-              </CardContent>
-            </StatCard>
-          </Grid>
+          <StatCard
+            label="API-вызовы"
+            value={stats.apiCalls.toLocaleString('ru-RU')}
+            hint="за этот месяц"
+            icon={TrendingUp}
+          >
+            <div className="flex items-center text-xs text-primary">
+              <ArrowUpRight className="me-1 h-3.5 w-3.5" />
+              +12.5% к прошлому месяцу
+            </div>
+          </StatCard>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard elevation={3}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar sx={{ bgcolor: '#00efdf', color: '#333', mr: 2 }}>
-                    <Code />
-                  </Avatar>
-                  <Typography variant="h6">Активные модели</Typography>
-                </Box>
-                <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold', color: '#00efdf' }}>
-                  {mockStats.activeModels}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#aaa' }}>
-                  моделей доступно
-                </Typography>
-                <Box sx={{ mt: 2, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  <Chip label="GPT-4" size="small" sx={{ bgcolor: '#444', color: '#00efdf' }} />
-                  <Chip label="Claude" size="small" sx={{ bgcolor: '#444', color: '#00efdf' }} />
-                  <Chip label="GPT-3.5" size="small" sx={{ bgcolor: '#444', color: '#00efdf' }} />
-                </Box>
-              </CardContent>
-            </StatCard>
-          </Grid>
+          <StatCard
+            label="Активные модели"
+            value={String(stats.activeModels)}
+            hint="используете сейчас"
+            icon={Zap}
+          >
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary" className="font-mono text-xs">gpt-4o</Badge>
+              <Badge variant="secondary" className="font-mono text-xs">claude</Badge>
+              <Badge variant="secondary" className="font-mono text-xs">flux</Badge>
+            </div>
+          </StatCard>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard elevation={3}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar sx={{ bgcolor: '#0ff', color: '#333', mr: 2 }}>
-                    <Stars />
-                  </Avatar>
-                  <Typography variant="h6">Тариф</Typography>
-                </Box>
-                <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold', color: '#0ff' }}>
-                  {mockStats.plan}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#aaa' }}>
-                  активен до 31.12.2025
-                </Typography>
-                <Button
-                  size="small"
-                  sx={{
-                    mt: 2,
-                    color: '#0ff',
-                    borderColor: '#0ff',
-                    '&:hover': { borderColor: '#0ff', bgcolor: 'rgba(0, 255, 255, 0.1)' },
-                  }}
-                  variant="outlined"
-                >
-                  Подробнее
+          <StatCard
+            label="Тариф"
+            value={stats.plan}
+            hint="активен до 31.05.2026"
+            icon={Stars}
+          >
+            <Button asChild variant="ghost" size="sm" className="-ms-3 text-primary">
+              <Link href="/pricing">
+                Сменить тариф <ArrowUpRight className="ms-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </StatCard>
+        </div>
+
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <Card className="lg:col-span-2">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold">Последние API-вызовы</h2>
+                <Button variant="ghost" size="sm" leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>
+                  Обновить
                 </Button>
-              </CardContent>
-            </StatCard>
-          </Grid>
-        </Grid>
-
-        {/* Main Content Grid */}
-        <Grid container spacing={3}>
-          {/* Token Balance Card */}
-          <Grid item xs={12} md={4}>
-            <StyledCard elevation={3}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#555' }}>
-                    Баланс токенов
-                  </Typography>
-                  <IconButton size="small" sx={{ color: '#00efdf' }}>
-                    <Refresh />
-                  </IconButton>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                  <CircularProgressWithLabel value={mockStats.tokens.percentage} />
-                </Box>
-                <Box sx={{ textAlign: 'center', mb: 3 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#555', mb: 1 }}>
-                    {mockStats.tokens.used.toLocaleString()} / {mockStats.tokens.total.toLocaleString()}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    токенов использовано
-                  </Typography>
-                </Box>
-                <ActionButton fullWidth startIcon={<PaymentOutlined />} sx={{ mb: 1 }}>
-                  Пополнить баланс
-                </ActionButton>
-              </CardContent>
-            </StyledCard>
-          </Grid>
-
-          {/* Current Plan & Quick Actions */}
-          <Grid item xs={12} md={4}>
-            <StyledCard elevation={3}>
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#555', mb: 3 }}>
-                  Текущий тариф
-                </Typography>
-                <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#555', mb: 1 }}>
-                    {mockStats.plan}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    1,000,000 токенов в месяц
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    <Chip label="Приоритетная поддержка" size="small" color="primary" />
-                    <Chip label="Все модели" size="small" color="primary" />
-                  </Box>
-                </Box>
-                <ActionButton fullWidth startIcon={<UpgradeOutlined />} sx={{ mb: 1 }}>
-                  Сменить тариф
-                </ActionButton>
-                <ActionButton fullWidth startIcon={<VpnKey />}>
-                  API ключи
-                </ActionButton>
-              </CardContent>
-            </StyledCard>
-          </Grid>
-
-          {/* Usage Statistics */}
-          <Grid item xs={12} md={4}>
-            <StyledCard elevation={3}>
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#555', mb: 3 }}>
-                  Статистика использования
-                </Typography>
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      API вызовов в этом месяце
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#00efdf' }}>
-                      {mockStats.apiCalls.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={45}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: '#f0f0f0',
-                      '& .MuiLinearProgress-bar': {
-                        bgcolor: '#00efdf',
-                        borderRadius: 4,
-                      },
-                    }}
-                  />
-                </Box>
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Токенов использовано
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#0ff' }}>
-                      {mockStats.tokens.used.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={mockStats.tokens.percentage}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: '#f0f0f0',
-                      '& .MuiLinearProgress-bar': {
-                        bgcolor: '#0ff',
-                        borderRadius: 4,
-                      },
-                    }}
-                  />
-                </Box>
-                <Box
-                  sx={{
-                    p: 2,
-                    bgcolor: '#f5f5f5',
-                    borderRadius: 2,
-                    border: '1px solid #00efdf',
-                  }}
-                >
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Средняя стоимость вызова
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#555' }}>
-                    608 токенов
-                  </Typography>
-                </Box>
-              </CardContent>
-            </StyledCard>
-          </Grid>
-
-          {/* Recent API Calls */}
-          <Grid item xs={12}>
-            <StyledCard elevation={3}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#555' }}>
-                    Последние API вызовы
-                  </Typography>
-                  <Button
-                    size="small"
-                    sx={{ color: '#00efdf' }}
-                    endIcon={<Settings />}
-                  >
-                    Настройки
-                  </Button>
-                </Box>
-                <TableContainer component={Paper} elevation={0} sx={{ bgcolor: 'transparent' }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: '#555' }}>Время</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#555' }}>Модель</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#555' }}>Endpoint</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: '#555' }}>
-                          Токены
+              </div>
+              <div className="overflow-x-auto -mx-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Время</TableHead>
+                      <TableHead>Модель</TableHead>
+                      <TableHead>Endpoint</TableHead>
+                      <TableHead className="text-end">Токены</TableHead>
+                      <TableHead className="text-center">Статус</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentCalls.map((call) => (
+                      <TableRow key={call.id}>
+                        <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                          {call.timestamp}
                         </TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 600, color: '#555' }}>
-                          Статус
+                        <TableCell>
+                          <Badge variant="secondary" className="font-mono">
+                            {call.model}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {call.endpoint}
+                        </TableCell>
+                        <TableCell className="text-end tabular-nums">
+                          {call.tokens.toLocaleString('ru-RU')}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {call.status === 'success' ? (
+                            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 hover:bg-green-500/15">
+                              OK
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">Ошибка</Badge>
+                          )}
                         </TableCell>
                       </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {mockRecentCalls.map((call) => (
-                        <TableRow
-                          key={call.id}
-                          sx={{
-                            '&:hover': {
-                              bgcolor: 'rgba(0, 239, 223, 0.05)',
-                            },
-                            transition: 'background-color 0.2s ease',
-                          }}
-                        >
-                          <TableCell>
-                            <Typography variant="body2" color="text.secondary">
-                              {call.timestamp}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={call.model}
-                              size="small"
-                              sx={{
-                                bgcolor: '#555',
-                                color: '#00efdf',
-                                fontWeight: 500,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                              {call.endpoint}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#555' }}>
-                              {call.tokens.toLocaleString()}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={call.status === 'success' ? 'Успешно' : 'Ошибка'}
-                              size="small"
-                              color={call.status === 'success' ? 'success' : 'error'}
-                              sx={{ minWidth: 80 }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                  <Button sx={{ color: '#00efdf' }}>
-                    Показать все вызовы
-                  </Button>
-                </Box>
-              </CardContent>
-            </StyledCard>
-          </Grid>
-        </Grid>
-      </Box>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4 text-center">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="#">Показать все вызовы</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold mb-1">Текущий тариф</h2>
+              <div className="text-3xl font-bold mt-3 mb-1">
+                {stats.plan}
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                3 200 кредитов / мес · 300 RPM · приоритет в роутинге
+              </p>
+              <div className="flex flex-wrap gap-1.5 mb-5">
+                <Badge variant="secondary">Все модели</Badge>
+                <Badge variant="secondary">Webhooks</Badge>
+                <Badge variant="secondary">BYOK</Badge>
+              </div>
+              <div className="space-y-2">
+                <Button asChild className="w-full">
+                  <Link href="/pricing">Сменить тариф</Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/docs">Документация</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
     </MainLayout>
   );
 }
