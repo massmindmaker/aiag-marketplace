@@ -9,12 +9,12 @@ See: `.planning/PROJECT.md` (updated 2026-04-26)
 
 ## Current Position
 
-Phase: 8 of 9 (Launch)
-Plan: 1 of 1 in current phase (08-01)
-Status: Started — agent died (rate limit). Multiple parallel phases (4/5/6/7) also in flight.
-Last activity: 2026-04-24 — three architectural decisions locked (D#12/D#13/D#14), Phase 04/05/06/07 active in worktrees, Phase 02 ~90%, Phase 03 merged.
+Phase: post-launch hardening (v0.5.0-mvp-integration shipped to https://ai-aggregator.ru)
+Plan: rolling bug-sweep + UI polish on master (no active GSD phase)
+Status: Production live. Web + gateway online behind pm2 + nginx. Marketplace, /api/auth/*, all 10 surveyed routes return 200 OK with no console errors.
+Last activity: 2026-04-27 — hero CA animation restored, NextAuth UntrustedHost + db SSL + marketplace `f is not a function` fixed and deployed.
 
-Progress: [██░░░░░░░░] 25% (2 of 8 v1.0 phases shipped; in-flight code weight pushes effective progress to ~37%)
+Progress: [██████░░░░] ~60% — Phases 1–3 + Phase 8 deployment shipped; Phases 4–7 merged into master via `v0.5.0-mvp-integration` and partially live (web + gateway). Still missing: real upstream API keys, payment integration test, S3 bucket, eval-runner sandbox.
 
 ## Why Phase 8 Next
 
@@ -34,14 +34,14 @@ Alternative: `/gsd:execute-phase 2` to finish bare-metal infrastructure (10% rem
 
 | Phase | Plans | Tests | Status |
 |-------|-------|-------|--------|
-| 1. Foundation | 1/1 | 44/44 passing (incl 2 integration vs VPS PG) | Complete |
-| 2. Infrastructure | 0/1 | n/a | ~90% (Tasks 10, 12 pending; subdomain certs DNS-blocked) |
-| 3. Design System | 1/1 | n/a | Complete |
-| 4. Gateway | 0/1 | 57/58 passing | ~60% (deploy tasks 13–19 pending) |
-| 5. Upstreams | 0/1 | n/a | ~75% (4 commits, ~4 tasks remain) |
-| 6. Marketplace | 0/1 | n/a | ~80% (image upload + SEO landings remain) |
-| 7. Supply | 0/1 | n/a | ~50% |
-| 8. Launch | 0/1 | n/a | Started (agent died, rate limit) |
+| 1. Foundation | 1/1 | 44/44 | Complete + deployed |
+| 2. Infrastructure | 1/1 | n/a | Complete — VPS bare-metal + HTTPS + apps + monitoring disabled per user |
+| 3. Design System | 1/1 | n/a | Complete + deployed (post-MUI purge, hero CA restored 2026-04-27) |
+| 4. Gateway | 1/1 | 57/58 | Complete — gateway live (node-runtime entry fixed) |
+| 5. Upstreams | partial | n/a | Merged — wiring exists, real API keys still TODO |
+| 6. Marketplace | 1/1 | n/a | Complete + deployed (RSC `f is not a function` fixed 2026-04-27) |
+| 7. Supply | partial | n/a | Merged — submission UI exists, eval-runner sandbox still TODO |
+| 8. Launch | 1/1 | n/a | Complete — pm2 + nginx + GitHub Actions SSH rsync deploy, ai-aggregator.ru live |
 
 ## Accumulated Context
 
@@ -61,16 +61,22 @@ None captured via GSD yet (workflow just bootstrapped today).
 ### Blockers/Concerns
 
 External (waiting on user):
-- **DNS** — `www.` and `api.` A-records not added in Beget. Blocks subdomain certbot in Phase 2 (REQ-INF-007).
-- **S3 bucket** — `aiag-storage` not created in Timeweb (no Cloud infra MCP). Blocks Phase 5 Fal/Replicate storage, Phase 6 image uploads, Phase 7 submissions (REQ-INF-011).
-- **VPS RAM** — current 2GB is tight (free ~600MB). Recommend upgrade to 4GB before production deploy (REQ-INF-012).
+- **Real upstream API keys** — OpenAI / YandexGPT / GigaChat / Anthropic. Without them /v1/chat/completions returns mock-or-401. Highest-priority next milestone.
+- **Payment integration end-to-end test** — Tinkoff sandbox keys + a successful test charge against `/api/payments/*`.
+- **S3 bucket** — `aiag-storage` not created in Timeweb. Blocks Phase 5 image storage, Phase 6 uploads, Phase 7 submissions (REQ-INF-011).
+- **VPS RAM** — 2GB tight (web 92MB + gateway 26MB + PG + nginx). Recommend 4GB upgrade before traffic.
+- **DNS** — `www.` and `api.` A-records not added in Beget. Blocks subdomain certs.
 
 Internal:
-- **Phase 8 agent died** — original execution stopped on rate limit. Need to resume via `/gsd:resume-work` or fresh `/gsd:execute-phase 8`.
-- **Plan 04 WIP commit** needs splitting into conventional commits before merge.
-- **7 legacy MUI pages** not migrated — accepted, deferred to `plan-03b` post-MVP.
-- **Pre-existing build issue** — `@aiag/database`, `@aiag/tinkoff`, `@aiag/shared` need explicit `npm run build` before web build (monorepo workspace linking quirk). Document in build runbook.
+- **Eval-runner sandbox** (nsjail) — Phase 7 submission scoring still uses unsanitised exec. SECURITY-TODO before opening contests publicly.
 - **VPS root password** — SECURITY-TODO change/disable (key auth already active).
+- **deploy.sh pm2 process name** — script looks for `web`/`gateway`, actual pm2 names are `aiag-web`/`aiag-gateway`. Manual `ln -sfn` + `pm2 restart aiag-web` required after each deploy. Cleanup ticket.
+
+Recently fixed (2026-04-27):
+- NextAuth v5 UntrustedHost / "Failed to parse URL /login?error=Configuration" → `trustHost: true`.
+- Postgres "server does not support SSL connections" on register → ssl=false for localhost URLs in `createDb`.
+- Marketplace 500 / `TypeError: f is not a function` digest 2370859535 → moved `computeFacets` from `'use client'` FilterPanel into `lib/marketplace/facets.ts`.
+- Hero animation missing → ported Brian's-Brain CA from `brain/Projects/AIAG/Wireframes/animations/hero-demo-v2.html` to `apps/web/src/components/HeroAnimation.tsx`.
 
 ## Deferred Items
 
@@ -84,11 +90,17 @@ Internal:
 
 ## Session Continuity
 
-Last session: 2026-04-24 (architectural pivot day — D#12/D#13/D#14 + 5 plans rewritten)
-Stopped at: Phase 4/5/6/7 active in worktrees, Phase 8 agent died on rate limit
-Resume file: `brain/Projects/AIAG/RESUME-HERE.md` (legacy pre-GSD format)
+Last session: 2026-04-27 (hero animation + bug sweep — see `brain/Projects/AIAG/Sessions/2026-04-27-hero-anim-bugs.md`)
+Stopped at: production stable, all 10 surveyed routes return 200 OK with zero console errors. Hero CA animation live.
+Resume file: `brain/Projects/AIAG/RESUME-HERE.md`
 
-**Suggested next action:** `/gsd:execute-phase 8` (launch-blocker) — or `/gsd:resume-work` to use the legacy resume marker. Alternative: `/gsd:execute-phase 2` to finish bare-metal infra first.
+**Next milestone candidates** (pick one to focus):
+1. Real OpenAI / YandexGPT keys → live `/v1/chat/completions` end-to-end
+2. Tinkoff sandbox payment test → close Phase 5 monetization loop
+3. S3 bucket provisioning → unblock image upload + submission flows
+4. nsjail eval-runner sandbox → unblock public contests
+
+**Last release:** `20260427T024519Z-1e346f7` deployed to ai-aggregator.ru — but commit hash is misleading; actual code shipped includes uncommitted master tip `ee0824d` (deploy was done with built artefacts before the commits were pushed; matches by content)
 
 **Worktrees in play (parallel work possible):**
 - `C:\Users\боб\projects\aggregator` — `exec/plan-03-design` (current shell, 4ad927f)
