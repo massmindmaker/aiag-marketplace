@@ -105,6 +105,7 @@ export default function HeroTerminal() {
       className="rounded-md overflow-hidden relative"
       style={{
         background: '#0f0f11',
+        maxWidth: '100%',
         border: '1px solid var(--line)',
         boxShadow:
           '0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)',
@@ -113,7 +114,7 @@ export default function HeroTerminal() {
       }}
     >
       <div
-        className="flex items-center px-4 py-3 border-b"
+        className="flex items-center px-3 py-3 border-b gap-1.5 min-w-0"
         style={{
           borderColor: 'var(--line)',
           background: 'rgba(255,255,255,0.02)',
@@ -132,13 +133,13 @@ export default function HeroTerminal() {
           style={{ width: 10, height: 10, background: '#28c840', marginRight: 6 }}
         />
         <span
-          className="ml-3 flex-1 font-mono text-[12px]"
+          className="ml-2 flex-1 font-mono text-[12px] truncate min-w-0"
           style={{ color: 'var(--ink-muted)' }}
         >
           terminal — bash
         </span>
         <span
-          className="font-mono text-[10px] uppercase font-semibold tracking-wider px-2 py-[3px] rounded-sm"
+          className="font-mono text-[10px] uppercase font-semibold tracking-wider px-1.5 py-[2px] rounded-sm shrink-0"
           style={{
             background: 'rgba(16,185,129,0.12)',
             color: '#10b981',

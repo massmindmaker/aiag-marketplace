@@ -276,8 +276,9 @@
 }
 .aiag-hero-lattice {
   position: absolute;
-  inset: -20%;
+  inset: 0;
   z-index: -2;
+  pointer-events: none;
   background:
     repeating-linear-gradient(
       45deg,
@@ -334,21 +335,21 @@
 }
 .aiag-float-card.fc-1 {
   top: 18%;
-  right: 3%;
+  right: clamp(12px, 3%, 40px);
   animation:
     aiag-fade-up 800ms cubic-bezier(0.23, 1, 0.32, 1) 1700ms both,
     aiag-float-1 9s ease-in-out infinite 2.5s;
 }
 .aiag-float-card.fc-2 {
   top: 48%;
-  right: -2%;
+  right: clamp(8px, 1%, 24px);
   animation:
     aiag-fade-up 800ms cubic-bezier(0.23, 1, 0.32, 1) 1900ms both,
     aiag-float-2 11s ease-in-out infinite 2.8s;
 }
 .aiag-float-card.fc-3 {
   bottom: 10%;
-  right: 8%;
+  right: clamp(16px, 8%, 80px);
   animation:
     aiag-fade-up 800ms cubic-bezier(0.23, 1, 0.32, 1) 2100ms both,
     aiag-float-3 13s ease-in-out infinite 3s;
