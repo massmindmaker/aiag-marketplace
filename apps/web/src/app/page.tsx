@@ -14,6 +14,7 @@ import {
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import HeroAnimation from '@/components/HeroAnimation';
 
 export const metadata: Metadata = {
   title: 'AI Aggregator — Маркетплейс AI-моделей с API в рублях',
@@ -65,10 +66,12 @@ export default function HomePage() {
     <MainLayout>
       {/* HERO */}
       <section className="relative overflow-hidden border-b border-border">
-        {/* gradient + grid backdrop */}
+        {/* Layer 1: cellular automaton (Brian's Brain) */}
+        <HeroAnimation className="pointer-events-none absolute inset-0 -z-30" />
+        {/* Layer 2: gradient + grid backdrop */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
+          className="pointer-events-none absolute inset-0 -z-20"
         >
           <div
             className="absolute inset-0 opacity-[0.35]"
@@ -88,6 +91,15 @@ export default function HomePage() {
             }}
           />
         </div>
+        {/* Layer 3: radial vignette to keep hero text legible above the CA */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 65% at 25% 50%, rgba(10,10,11,0) 0%, rgba(10,10,11,0.85) 70%), linear-gradient(135deg, rgba(10,10,11,0.25) 0%, rgba(10,10,11,0.9) 100%)',
+          }}
+        />
 
         <div className="container mx-auto max-w-6xl px-4 py-20 md:py-28 lg:py-32">
           <div className="flex flex-col items-start gap-6 max-w-3xl">
