@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 
 interface Tier {
+  id: string; // 'free'|'basic'|'starter'|'pro'
   name: string;
   monthlyPrice: number;
   yearlyPrice: number;
@@ -25,6 +26,7 @@ interface Tier {
 // Финальные тарифы из Knowledge/14-pricing-validation.md
 const tiers: Tier[] = [
   {
+    id: 'free',
     name: 'Free',
     monthlyPrice: 0,
     yearlyPrice: 0,
@@ -40,6 +42,7 @@ const tiers: Tier[] = [
     ctaHref: '/register',
   },
   {
+    id: 'basic',
     name: 'Basic',
     monthlyPrice: 990,
     yearlyPrice: 9900,
@@ -51,10 +54,11 @@ const tiers: Tier[] = [
       'Webhooks и события',
       'Чат-поддержка в Telegram',
     ],
-    cta: 'Выбрать Basic',
+    cta: 'Подписаться на Basic',
     ctaHref: '/register?plan=basic',
   },
   {
+    id: 'starter',
     name: 'Starter',
     monthlyPrice: 2490,
     yearlyPrice: 24900,
@@ -67,11 +71,12 @@ const tiers: Tier[] = [
       'BYOK для своих API-ключей',
       'Аналитика расходов',
     ],
-    cta: 'Выбрать Starter',
+    cta: 'Подписаться на Starter',
     ctaHref: '/register?plan=starter',
     isPopular: true,
   },
   {
+    id: 'pro',
     name: 'Pro',
     monthlyPrice: 6990,
     yearlyPrice: 69900,
@@ -84,10 +89,18 @@ const tiers: Tier[] = [
       'Выделенный менеджер',
       'Custom rate-limits',
     ],
-    cta: 'Выбрать Pro',
+    cta: 'Подписаться на Pro',
     ctaHref: '/register?plan=pro',
   },
 ];
+
+type ProviderId = 'tinkoff' | 'yookassa' | 'sbp';
+
+const PROVIDER_LABELS: Record<ProviderId, string> = {
+  tinkoff: 'Тинькофф',
+  yookassa: 'ЮKassa (карта)',
+  sbp: 'СБП',
+};
 
 function formatPrice(n: number) {
   return n.toLocaleString('ru-RU');
@@ -95,6 +108,48 @@ function formatPrice(n: number) {
 
 export default function PricingPage() {
   const [isYearly, setIsYearly] = useState(false);
+  const [provider, setProvider] = useState<ProviderId>('tinkoff');
+  const [pendingTier, setPendingTier] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubscribe(tierId: string) {
+    setError(null);
+    setPendingTier(tierId);
+    try {
+      const res = await fetch('/api/subscriptions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tierId, yearly: isYearly, provider }),
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        paymentUrl?: string;
+        qrPayload?: string;
+        error?: { message: string; code?: string };
+      };
+      if (res.status === 401) {
+        // Not logged in — redirect to register with intent
+        window.location.href = `/register?plan=${tierId}&intent=subscribe`;
+        return;
+      }
+      if (!res.ok || !data.success) {
+        setError(data.error?.message || `Ошибка ${res.status}`);
+        return;
+      }
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else if (data.qrPayload) {
+        // For SBP — surface QR payload as link/QR (basic UX)
+        window.location.href = data.qrPayload;
+      } else {
+        setError('Получен пустой ответ от платёжной системы');
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPendingTier(null);
+    }
+  }
 
   return (
     <MainLayout>
@@ -136,6 +191,35 @@ export default function PricingPage() {
               −15%
             </Badge>
           </div>
+
+          {/* Payment provider selector */}
+          <div className="mt-5 inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Способ оплаты:</span>
+            {(['tinkoff', 'yookassa', 'sbp'] as ProviderId[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setProvider(p)}
+                className={cn(
+                  'px-3 py-1 rounded-full border transition-colors',
+                  provider === p
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border hover:border-primary/40'
+                )}
+              >
+                {PROVIDER_LABELS[p]}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="mt-4 inline-block rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -197,17 +281,31 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                <Button
-                  asChild
-                  className="mt-6 w-full"
-                  variant={tier.isPopular ? 'default' : 'outline'}
-                  size="lg"
-                >
-                  <Link href={tier.ctaHref}>
-                    {tier.cta}
+                {tier.id === 'free' ? (
+                  <Button
+                    asChild
+                    className="mt-6 w-full"
+                    variant={tier.isPopular ? 'default' : 'outline'}
+                    size="lg"
+                  >
+                    <Link href={tier.ctaHref}>
+                      {tier.cta}
+                      <ArrowRight className="ms-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    className="mt-6 w-full"
+                    variant={tier.isPopular ? 'default' : 'outline'}
+                    size="lg"
+                    disabled={pendingTier === tier.id}
+                    onClick={() => handleSubscribe(tier.id)}
+                  >
+                    {pendingTier === tier.id ? 'Перенаправляем…' : tier.cta}
                     <ArrowRight className="ms-2 h-4 w-4" />
-                  </Link>
-                </Button>
+                  </Button>
+                )}
               </div>
             );
           })}
