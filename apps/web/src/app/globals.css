@@ -22,7 +22,7 @@
     --secondary-foreground: 240 5% 96%;
     --muted: 240 6% 8%;
     --muted-foreground: 240 4% 46%;
-    --accent: 38 92% 50%;
+    --accent: #f59e0b;
     --accent-foreground: 0 0% 0%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -62,7 +62,7 @@
     --secondary-foreground: 240 5% 96%;
     --muted: 240 6% 8%;
     --muted-foreground: 240 4% 46%;
-    --accent: 38 92% 50%;
+    --accent: #f59e0b;
     --accent-foreground: 0 0% 0%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -94,7 +94,7 @@
     --secondary-foreground: 240 5% 11%;
     --muted: 240 5% 96%;
     --muted-foreground: 240 4% 46%;
-    --accent: 38 92% 50%;
+    --accent: #f59e0b;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 73% 51%;
     --destructive-foreground: 0 0% 100%;

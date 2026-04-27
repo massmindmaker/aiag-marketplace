@@ -285,7 +285,7 @@ export default function PricingPage() {
                   <Button
                     asChild
                     className="mt-6 w-full"
-                    variant={tier.isPopular ? 'default' : 'outline'}
+                    variant="default"
                     size="lg"
                   >
                     <Link href={tier.ctaHref}>
@@ -297,7 +297,7 @@ export default function PricingPage() {
                   <Button
                     type="button"
                     className="mt-6 w-full"
-                    variant={tier.isPopular ? 'default' : 'outline'}
+                    variant="default"
                     size="lg"
                     disabled={pendingTier === tier.id}
                     onClick={() => handleSubscribe(tier.id)}
