@@ -37,6 +37,7 @@ export default defineConfig({
       '@aiag/database': path.resolve(__dirname, './packages/database/src'),
       '@aiag/shared': path.resolve(__dirname, './packages/shared/src'),
       '@aiag/tinkoff': path.resolve(__dirname, './packages/tinkoff/src'),
+      '@aiag/yookassa': path.resolve(__dirname, './packages/yookassa/src'),
       '@aiag/upstream-adapters': path.resolve(__dirname, './packages/upstream-adapters/src'),
     },
   },

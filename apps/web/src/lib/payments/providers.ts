@@ -1,0 +1,196 @@
+/**
+ * Unified payment provider interface.
+ *
+ * Wraps Tinkoff Acquiring + YooKassa REST behind a single API used by
+ * subscription/topup/refund routes. New providers can be added by implementing
+ * the `PaymentProvider` interface and registering in `getPaymentProvider`.
+ */
+import { createTinkoffClient } from '@aiag/tinkoff';
+import type { TinkoffAcquiring } from '@aiag/tinkoff';
+import { createYooKassaClient } from '@aiag/yookassa';
+import type { YooKassaClient } from '@aiag/yookassa';
+
+export type ProviderId = 'tinkoff' | 'yookassa' | 'sbp';
+
+export interface InitPaymentParams {
+  orderId: string;
+  amountRub: number;
+  description: string;
+  returnUrl: string;
+  notificationUrl?: string;
+  email?: string;
+  phone?: string;
+  metadata?: Record<string, string>;
+  recurrent?: boolean;
+}
+
+export interface InitPaymentResult {
+  success: boolean;
+  providerPaymentId: string;
+  paymentUrl?: string;
+  qrPayload?: string;     // for SBP
+  status: string;
+  errorMessage?: string;
+}
+
+export interface RefundResult {
+  success: boolean;
+  providerRefundId?: string;
+  errorMessage?: string;
+}
+
+export interface PaymentProvider {
+  id: ProviderId;
+  initPayment(params: InitPaymentParams): Promise<InitPaymentResult>;
+  refund(providerPaymentId: string, amountRub: number, reason?: string): Promise<RefundResult>;
+}
+
+/* ------------------------------ Tinkoff impl ----------------------------- */
+
+class TinkoffProvider implements PaymentProvider {
+  id: ProviderId = 'tinkoff';
+  constructor(private client: TinkoffAcquiring) {}
+
+  async initPayment(params: InitPaymentParams): Promise<InitPaymentResult> {
+    const r = await this.client.createPayment({
+      orderId: params.orderId,
+      amount: params.amountRub,
+      description: params.description,
+      successUrl: params.returnUrl,
+      failUrl: params.returnUrl,
+      notificationUrl: params.notificationUrl,
+      email: params.email,
+      phone: params.phone,
+      metadata: params.metadata,
+      recurrent: params.recurrent,
+    });
+    return {
+      success: r.success,
+      providerPaymentId: r.paymentId,
+      paymentUrl: r.paymentUrl,
+      status: r.status,
+      errorMessage: r.errorMessage,
+    };
+  }
+
+  async refund(providerPaymentId: string, amountRub: number): Promise<RefundResult> {
+    const r = await this.client.refundPayment(providerPaymentId, amountRub);
+    return {
+      success: r.success,
+      providerRefundId: r.paymentId,
+      errorMessage: r.errorMessage,
+    };
+  }
+}
+
+/* ----------------------------- YooKassa impl ----------------------------- */
+
+class YooKassaProvider implements PaymentProvider {
+  id: ProviderId;
+  constructor(
+    private client: YooKassaClient,
+    private method: 'bank_card' | 'sbp' = 'bank_card'
+  ) {
+    this.id = method === 'sbp' ? 'sbp' : 'yookassa';
+  }
+
+  async initPayment(params: InitPaymentParams): Promise<InitPaymentResult> {
+    const r = await this.client.createPayment({
+      orderId: params.orderId,
+      amount: params.amountRub,
+      description: params.description,
+      returnUrl: params.returnUrl,
+      paymentMethod: this.method,
+      email: params.email,
+      phone: params.phone,
+      metadata: params.metadata,
+    });
+    return {
+      success: r.success,
+      providerPaymentId: r.paymentId,
+      paymentUrl: r.paymentUrl,
+      qrPayload: r.confirmationData,
+      status: r.status,
+      errorMessage: r.errorMessage,
+    };
+  }
+
+  async refund(providerPaymentId: string, amountRub: number, reason?: string): Promise<RefundResult> {
+    try {
+      const r = await this.client.refundPayment(providerPaymentId, amountRub, reason);
+      return { success: r.status === 'succeeded', providerRefundId: r.id };
+    } catch (e) {
+      return { success: false, errorMessage: (e as Error).message };
+    }
+  }
+}
+
+/* ------------------------------- Registry -------------------------------- */
+
+export function getTinkoffClient(): TinkoffAcquiring {
+  return createTinkoffClient({
+    terminalKey: process.env.TINKOFF_TERMINAL_KEY || 'placeholder_terminal',
+    secretKey: process.env.TINKOFF_PASSWORD || process.env.TINKOFF_SECRET_KEY || 'placeholder_secret',
+    apiUrl: process.env.TINKOFF_API_URL,
+  });
+}
+
+export function getYooKassaClient(): YooKassaClient {
+  return createYooKassaClient({
+    shopId: process.env.YOOKASSA_SHOP_ID || 'placeholder_shop',
+    secretKey: process.env.YOOKASSA_SECRET_KEY || 'placeholder_secret',
+  });
+}
+
+export function getPaymentProvider(id: ProviderId): PaymentProvider {
+  switch (id) {
+    case 'tinkoff':
+      return new TinkoffProvider(getTinkoffClient());
+    case 'yookassa':
+      return new YooKassaProvider(getYooKassaClient(), 'bank_card');
+    case 'sbp':
+      return new YooKassaProvider(getYooKassaClient(), 'sbp');
+    default:
+      throw new Error(`Unknown payment provider: ${id}`);
+  }
+}
+
+export const ALL_PROVIDERS: ReadonlyArray<{
+  id: ProviderId;
+  label: string;
+  description: string;
+  enabled: boolean;
+}> = [
+  {
+    id: 'tinkoff',
+    label: 'Tinkoff',
+    description: 'Карты, Tinkoff Pay',
+    enabled: !!process.env.TINKOFF_TERMINAL_KEY,
+  },
+  {
+    id: 'yookassa',
+    label: 'YooKassa (карта)',
+    description: 'Visa / Mastercard / МИР через ЮKassa',
+    enabled: !!process.env.YOOKASSA_SHOP_ID,
+  },
+  {
+    id: 'sbp',
+    label: 'СБП',
+    description: 'Система быстрых платежей',
+    enabled: !!process.env.YOOKASSA_SHOP_ID,
+  },
+];
+
+export const TIERS = {
+  free: { name: 'Free', monthly: 0, yearly: 0, credits: 200 },
+  basic: { name: 'Basic', monthly: 990, yearly: 9900, credits: 1200 },
+  starter: { name: 'Starter', monthly: 2490, yearly: 24900, credits: 3200 },
+  pro: { name: 'Pro', monthly: 6990, yearly: 69900, credits: 10000 },
+} as const;
+
+export type TierId = keyof typeof TIERS;
+
+export function getTier(tierId: string): (typeof TIERS)[TierId] | null {
+  if (tierId in TIERS) return TIERS[tierId as TierId];
+  return null;
+}

@@ -1,0 +1,219 @@
+'use client';
+
+import { useState } from 'react';
+import { ArrowRight, CreditCard, Wallet, Crown, Plus } from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/lib/utils';
+
+type ProviderId = 'tinkoff' | 'yookassa' | 'sbp';
+
+const PROVIDER_LABELS: Record<ProviderId, string> = {
+  tinkoff: 'Тинькофф',
+  yookassa: 'ЮKassa',
+  sbp: 'СБП',
+};
+
+interface PaymentRow {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  provider: string;
+  description: string;
+  createdAt: string;
+}
+
+// MVP — server data wiring TODO Plan 04 schema sync
+const MOCK_PAYMENTS: PaymentRow[] = [];
+
+const TOPUP_PRESETS = [500, 1000, 2500, 5000, 10000];
+
+export default function BillingPage() {
+  const [topupAmount, setTopupAmount] = useState<number>(1000);
+  const [topupProvider, setTopupProvider] = useState<ProviderId>('tinkoff');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleTopup() {
+    setError(null);
+    setPending(true);
+    try {
+      const res = await fetch('/api/payments/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountRub: topupAmount, provider: topupProvider }),
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        paymentUrl?: string;
+        qrPayload?: string;
+        error?: { message: string };
+      };
+      if (!res.ok || !data.success) {
+        setError(data.error?.message || `Ошибка ${res.status}`);
+        return;
+      }
+      if (data.paymentUrl) window.location.href = data.paymentUrl;
+      else if (data.qrPayload) window.location.href = data.qrPayload;
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <MainLayout>
+      <section className="container mx-auto max-w-6xl px-4 py-10">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Биллинг</h1>
+            <p className="mt-1 text-muted-foreground">
+              Платежи, активная подписка и баланс PAYG.
+            </p>
+          </div>
+        </div>
+
+        {/* Top cards: subscription / PAYG balance */}
+        <div className="grid gap-4 md:grid-cols-2 mb-8">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Crown className="h-4 w-4 text-primary" />
+              Активная подписка
+            </div>
+            <div className="mt-2 text-2xl font-semibold">
+              Free
+              <Badge variant="outline" className="ms-2 align-middle text-xs">
+                200 кредитов / мес
+              </Badge>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Перейдите на платный тариф для повышенных лимитов и приоритета
+              в роутинге.
+            </p>
+            <Button asChild size="sm" className="mt-4">
+              <a href="/pricing">
+                Выбрать тариф <ArrowRight className="ms-2 h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Wallet className="h-4 w-4 text-primary" />
+              Баланс PAYG
+            </div>
+            <div className="mt-2 text-2xl font-semibold">
+              0,00 <span className="text-base text-muted-foreground">₽</span>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Pay-per-use списания за API-запросы сверх лимита подписки.
+            </p>
+          </div>
+        </div>
+
+        {/* Top-up form */}
+        <div className="rounded-2xl border border-border bg-card p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Plus className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Пополнить баланс</h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {TOPUP_PRESETS.map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                onClick={() => setTopupAmount(amount)}
+                className={cn(
+                  'px-4 py-2 rounded-full border text-sm transition-colors',
+                  topupAmount === amount
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border hover:border-primary/40'
+                )}
+              >
+                {amount.toLocaleString('ru-RU')} ₽
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-muted-foreground">
+            <span>Способ оплаты:</span>
+            {(['tinkoff', 'yookassa', 'sbp'] as ProviderId[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setTopupProvider(p)}
+                className={cn(
+                  'px-3 py-1 rounded-full border transition-colors',
+                  topupProvider === p
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border hover:border-primary/40'
+                )}
+              >
+                {PROVIDER_LABELS[p]}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {error}
+            </div>
+          )}
+
+          <Button onClick={handleTopup} disabled={pending}>
+            <CreditCard className="me-2 h-4 w-4" />
+            {pending
+              ? 'Перенаправляем…'
+              : `Пополнить на ${topupAmount.toLocaleString('ru-RU')} ₽`}
+          </Button>
+        </div>
+
+        {/* Payments table */}
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold">История платежей</h2>
+          </div>
+          {MOCK_PAYMENTS.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+              Платежей пока нет.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase text-muted-foreground bg-muted/30">
+                <tr>
+                  <th className="px-6 py-3 text-left">Дата</th>
+                  <th className="px-6 py-3 text-left">Описание</th>
+                  <th className="px-6 py-3 text-left">Метод</th>
+                  <th className="px-6 py-3 text-right">Сумма</th>
+                  <th className="px-6 py-3 text-left">Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {MOCK_PAYMENTS.map((p) => (
+                  <tr key={p.id} className="border-t border-border">
+                    <td className="px-6 py-3">{p.createdAt}</td>
+                    <td className="px-6 py-3">{p.description}</td>
+                    <td className="px-6 py-3">{p.provider}</td>
+                    <td className="px-6 py-3 text-right">
+                      {p.amount.toLocaleString('ru-RU')} {p.currency}
+                    </td>
+                    <td className="px-6 py-3">
+                      <Badge variant="outline">{p.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+    </MainLayout>
+  );
+}
