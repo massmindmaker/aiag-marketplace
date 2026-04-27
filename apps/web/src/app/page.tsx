@@ -1,292 +1,1240 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import {
-  ArrowRight,
-  Boxes,
-  Trophy,
-  Wallet,
-  ShieldCheck,
-  Zap,
-  Code2,
-  Send,
-  Mail,
-} from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import HeroAnimation from '@/components/HeroAnimation';
+import HeroTerminal from '@/components/home/HeroTerminal';
+import HomeFaq from '@/components/home/HomeFaq';
 
 export const metadata: Metadata = {
-  title: 'AI Aggregator — Маркетплейс AI-моделей с API в рублях',
+  title:
+    'AI-Aggregator — любая AI-модель, один API, оплата в ₽',
   description:
-    'Любая AI-модель. Один API. Оплата в рублях. GPT, Claude, YandexGPT, GigaChat, Stable Diffusion, Whisper — без VPN, с RU-residency.',
+    'Подключайте любую AI-модель через OpenAI-совместимый API. GPT-5, Claude, Flux, Veo, Whisper и сотни открытых моделей. Оплата картой РФ, СБП, по счёту. Deploy в РФ-регионе — latency < 100ms.',
 };
 
-const features = [
+const scenarios = [
   {
-    icon: Boxes,
-    title: 'Маркетплейс моделей',
-    text: 'Десятки моделей через единый OpenAI-совместимый API: GPT, Claude, YandexGPT, GigaChat, Llama, Flux, Whisper, Veo.',
-    cta: { label: 'Открыть каталог', href: '/marketplace' },
+    icon: '💬',
+    title: 'Chatbot / Support',
+    desc: 'GPT-5, Claude, DeepSeek. Streaming, tool calls, контекст 200k.',
   },
   {
-    icon: Trophy,
-    title: 'ML-конкурсы',
-    text: 'Победители публикуют модели в маркетплейсе и получают 70% с подписок. Постоянный приток свежих решений от сообщества.',
-    cta: { label: 'К конкурсам', href: '/contests' },
+    icon: '📄',
+    title: 'RAG / Docs',
+    desc: 'Embedding + reranker + LLM. Русские модели ЯндексGPT, GigaChat.',
   },
   {
-    icon: Wallet,
-    title: 'Оплата в рублях',
-    text: 'T-Bank, СБП, ЮKassa, счёт юрлицу. Без VPN и валютных комиссий. Прозрачный pay-per-request — никаких скрытых лимитов.',
-    cta: { label: 'Тарифы', href: '/pricing' },
+    icon: '</>',
+    title: 'Code / DevTool',
+    desc: 'Claude Sonnet, DeepSeek-Coder, Qwen2.5-Coder. FIM, large ctx.',
+  },
+  {
+    icon: '🖼',
+    title: 'Image / Avatar',
+    desc: 'SDXL, Flux, Imagen 4, Midjourney. ControlNet, IP-Adapter.',
+  },
+  {
+    icon: '🎙',
+    title: 'Audio / Voice',
+    desc: 'Whisper, ElevenLabs, Suno, XTTS. STT, TTS, voice cloning.',
   },
 ];
 
-const valueProps = [
+const providers = [
+  'OpenAI', 'Anthropic', 'Google DeepMind', 'Meta AI', 'DeepSeek',
+  'Stability AI', 'Black Forest Labs', 'Runway', 'Suno', 'ElevenLabs',
+  'Qwen', 'Mistral', 'Minimax',
+];
+
+const topModels = [
   {
-    icon: ShieldCheck,
-    title: '152-ФЗ и RU-residency',
-    text: 'Open-source модели хостим в РФ. Shield-RF бэйдж — для критичных данных.',
+    code: 'G5',
+    title: 'GPT-5',
+    provider: 'openai',
+    chips: ['chat', 'vision', 'tools'],
+    desc: 'Флагманская multimodal LLM с 1M ctx, reasoning и tool use.',
+    price: '0.2 ₽ / 1k tok',
+    stats: '⭐ 4.9 · 12M req',
   },
   {
-    icon: Zap,
-    title: 'Низкая задержка',
-    text: 'Роутинг через ближайший регион РФ. Стабильно < 200мс до first-token.',
+    code: 'SD',
+    title: 'SDXL 1.0',
+    provider: 'stability-ai',
+    chips: ['image', 'open'],
+    desc: 'Генерация 1024×1024 за ~2 сек. LoRA, ControlNet, IP-Adapter.',
+    price: '0.04 ₽ / img',
+    stats: '⭐ 4.8 · 8M req',
   },
   {
-    icon: Code2,
-    title: 'OpenAI-совместимо',
-    text: 'Поменяйте baseURL — и существующий код продолжит работать.',
+    code: 'C4',
+    title: 'Claude Sonnet 4.7',
+    provider: 'anthropic',
+    chips: ['chat', '200k ctx'],
+    desc: 'Лучший coding LLM, agentic workflows, artifact mode.',
+    price: '0.35 ₽ / 1k tok',
+    stats: '⭐ 4.9 · 5M req',
+  },
+  {
+    code: 'FX',
+    title: 'Flux 1.1 Pro',
+    provider: 'black-forest-labs',
+    chips: ['image', 'photo'],
+    desc: 'Фотореалистичная генерация, превосходит MJ v6 на людях.',
+    price: '0.12 ₽ / img',
+    stats: '⭐ 4.9 · 3M req',
+  },
+];
+
+const steps = [
+  {
+    num: '// 01',
+    title: 'Выберите модель',
+    desc: '400+ моделей с фильтром по модальности, цене и latency. Playground без регистрации.',
+    code: (
+      <>
+        GET <span style={{ color: '#a1e89b' }}>/marketplace?tag=image</span>
+      </>
+    ),
+  },
+  {
+    num: '// 02',
+    title: 'Получите API-ключ',
+    desc: 'Пополните баланс через T-Bank, СБП или по счёту. Ключ в дашборде через 10 секунд.',
+    code: (
+      <>
+        Authorization: Bearer{' '}
+        <span style={{ color: 'var(--accent)' }}>sk_aiag_live_...</span>
+      </>
+    ),
+  },
+  {
+    num: '// 03',
+    title: 'Подключите в коде',
+    desc: 'OpenAI-совместимый endpoint. Поменяйте base_url — и всё работает.',
+    code: (
+      <>
+        <span style={{ color: '#93c5fd' }}>base_url</span>=
+        <span style={{ color: '#a1e89b' }}>"api.ai-aggregator.ru/v1"</span>
+      </>
+    ),
+  },
+];
+
+const compareRows = [
+  {
+    feat: 'Оплата картой РФ / СБП',
+    us: { kind: 'check', text: '✓ T-Bank, ЮKassa, СБП' },
+    cells: [
+      { kind: 'cross', text: '✗ только US card' },
+      { kind: 'cross', text: '✗ только US card' },
+      { kind: 'check', text: '✓ ЮKassa' },
+    ],
+  },
+  {
+    feat: 'Работает без VPN',
+    us: { kind: 'check', text: '✓ РФ-регион' },
+    cells: [
+      { kind: 'cross', text: '✗ geo-блок' },
+      { kind: 'meh', text: '~ частично' },
+      { kind: 'check', text: '✓' },
+    ],
+  },
+  {
+    feat: 'Каталог моделей',
+    us: { kind: 'check', text: '✓ 400+, LLM + image + audio' },
+    cells: [
+      { kind: 'check', text: '✓ 1000+ (image heavy)' },
+      { kind: 'check', text: '✓ 500k+ (часто без API)' },
+      { kind: 'meh', text: '~ 30 LLM' },
+    ],
+  },
+  {
+    feat: 'OpenAI-совместимый API',
+    us: { kind: 'check', text: '✓ drop-in replacement' },
+    cells: [
+      { kind: 'cross', text: '✗ свой формат' },
+      { kind: 'meh', text: '~ Inference API' },
+      { kind: 'check', text: '✓' },
+    ],
+  },
+  {
+    feat: 'Latency из РФ',
+    us: { kind: 'check', text: '< 100ms' },
+    cells: [
+      { kind: 'meh', text: '~ 300ms' },
+      { kind: 'meh', text: '~ 400ms' },
+      { kind: 'check', text: '< 150ms' },
+    ],
+  },
+  {
+    feat: 'Конкурсы / кастом-модели',
+    us: { kind: 'check', text: '✓ open contests + 70% ML-инженеру' },
+    cells: [
+      { kind: 'cross', text: '✗' },
+      { kind: 'cross', text: '✗' },
+      { kind: 'cross', text: '✗' },
+    ],
+  },
+  {
+    feat: 'Договор + закр. документы',
+    us: { kind: 'check', text: '✓ ИП / ООО, УПД, счёт' },
+    cells: [
+      { kind: 'cross', text: '✗' },
+      { kind: 'cross', text: '✗' },
+      { kind: 'check', text: '✓' },
+    ],
+  },
+];
+
+const cellColor: Record<string, string> = {
+  check: 'var(--success)',
+  cross: 'var(--danger)',
+  meh: 'var(--ink-muted)',
+};
+
+const pricingTiers = [
+  {
+    tier: 'Free',
+    price: <>0 ₽<span className="text-[11px] font-normal" style={{ color: 'var(--ink-muted)' }}> / мес</span></>,
+    desc: '50₽ на баланс. Playground. Open-source модели.',
+    cta: 'Начать',
+  },
+  {
+    tier: 'Basic',
+    price: <>990<span style={{ color: 'var(--accent)', fontSize: 14 }}>₽</span><span className="text-[11px] font-normal" style={{ color: 'var(--ink-muted)' }}> / мес</span></>,
+    desc: '+1000₽ на баланс. Все модели. Email-поддержка.',
+    cta: 'Подключить',
+  },
+  {
+    tier: 'Starter',
+    featured: true,
+    price: <>2 490<span style={{ color: 'var(--accent)', fontSize: 14 }}>₽</span><span className="text-[11px] font-normal" style={{ color: 'var(--ink-muted)' }}> / мес</span></>,
+    desc: '+2700₽. -10% на запросы. Приоритет в очереди.',
+    cta: 'Выбрать',
+  },
+  {
+    tier: 'Growth',
+    price: <>4 490<span style={{ color: 'var(--accent)', fontSize: 14 }}>₽</span><span className="text-[11px] font-normal" style={{ color: 'var(--ink-muted)' }}> / мес</span></>,
+    desc: '+5000₽. -15% цена. 5 API-ключей. SLA 99.9%.',
+    cta: 'Выбрать',
+  },
+  {
+    tier: 'Pro',
+    price: <>6 990<span style={{ color: 'var(--accent)', fontSize: 14 }}>₽</span><span className="text-[11px] font-normal" style={{ color: 'var(--ink-muted)' }}> / мес</span></>,
+    desc: '+8000₽. -20% цена. Custom rate limit. Slack-поддержка.',
+    cta: 'Выбрать',
+  },
+  {
+    tier: 'Business',
+    price: <>29 900<span style={{ color: 'var(--accent)', fontSize: 14 }}>₽</span><span className="text-[11px] font-normal" style={{ color: 'var(--ink-muted)' }}> / мес</span></>,
+    desc: '+35 000₽. -25% цена. Договор ООО. Dedicated.',
+    cta: 'Связаться',
   },
 ];
 
 export default function HomePage() {
   return (
     <MainLayout>
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-border">
-        {/* Layer 1: cellular automaton (Brian's Brain) */}
-        <HeroAnimation className="pointer-events-none absolute inset-0 -z-30" />
-        {/* Layer 2: gradient + grid backdrop */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-20"
-        >
-          <div
-            className="absolute inset-0 opacity-[0.35]"
-            style={{
-              backgroundImage:
-                'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(245,158,11,0.18), transparent 60%), radial-gradient(ellipse 80% 60% at 80% 100%, rgba(245,158,11,0.10), transparent 70%)',
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)',
-              backgroundSize: '64px 64px',
-              maskImage:
-                'radial-gradient(ellipse at center, black 20%, transparent 70%)',
-            }}
+      {/* ═══ HERO ═══ */}
+      <section
+        className="relative isolate overflow-hidden"
+        style={{ minHeight: 760, padding: '80px 20px 120px' }}
+      >
+        {/* Layer: cellular automaton canvas (full-bleed) */}
+        <div className="aiag-hero-canvas">
+          <HeroAnimation
+            className="absolute inset-0"
+            opacity={1}
+            cellSize={5}
+            density={0.32}
+            tickMs={140}
           />
         </div>
-        {/* Layer 3: radial vignette to keep hero text legible above the CA */}
+        {/* Layer: SVG-style lattice overlay */}
+        <div className="aiag-hero-lattice" />
+        {/* Layer: vignette overlay */}
+        <div className="aiag-hero-overlay" />
+
+        {/* Floating model cards (right side) */}
         <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
+          className="aiag-floating-cards absolute inset-0 pointer-events-none"
+          style={{ zIndex: 0 }}
+        >
+          <div className="aiag-float-card fc-1">
+            <div className="font-semibold mb-1 text-[12px]" style={{ color: 'var(--ink)' }}>
+              stability-ai / sdxl
+            </div>
+            <div style={{ color: 'var(--ink-muted)' }}>
+              image · <span style={{ color: 'var(--accent)' }}>0.04 ₽</span>/img
+            </div>
+          </div>
+          <div className="aiag-float-card fc-2">
+            <div className="font-semibold mb-1 text-[12px]" style={{ color: 'var(--ink)' }}>
+              openai / gpt-5
+            </div>
+            <div style={{ color: 'var(--ink-muted)' }}>
+              chat · <span style={{ color: 'var(--accent)' }}>0.2 ₽</span>/1k tok
+            </div>
+          </div>
+          <div className="aiag-float-card fc-3">
+            <div className="font-semibold mb-1 text-[12px]" style={{ color: 'var(--ink)' }}>
+              whisper / large-v3
+            </div>
+            <div style={{ color: 'var(--ink-muted)' }}>
+              audio · <span style={{ color: 'var(--accent)' }}>0.08 ₽</span>/мин
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="relative grid items-center"
           style={{
-            background:
-              'radial-gradient(ellipse 70% 65% at 25% 50%, rgba(10,10,11,0) 0%, rgba(10,10,11,0.85) 70%), linear-gradient(135deg, rgba(10,10,11,0.25) 0%, rgba(10,10,11,0.9) 100%)',
+            maxWidth: 1280,
+            margin: '0 auto',
+            gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
+            gap: 80,
+            zIndex: 1,
           }}
-        />
-
-        <div className="container mx-auto max-w-6xl px-4 py-20 md:py-28 lg:py-32">
-          <div className="flex flex-col items-start gap-6 max-w-3xl">
-            <Badge
-              variant="outline"
-              className="rounded-full border-primary/40 text-primary px-3 py-1 text-xs font-mono"
+        >
+          <div className="min-w-0">
+            <span
+              className="inline-flex items-center font-mono uppercase rounded-sm"
+              style={{
+                fontSize: 11,
+                color: 'var(--accent)',
+                letterSpacing: '0.1em',
+                marginBottom: 24,
+                padding: '7px 12px',
+                background: 'rgba(245,158,11,0.12)',
+                border: '1px solid rgba(245,158,11,0.28)',
+                animation:
+                  'aiag-fade-up 500ms 100ms cubic-bezier(.23,1,.32,1) both',
+              }}
             >
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              Russian Replicate × Russian Kaggle
-            </Badge>
+              <span
+                className="inline-block rounded-full mr-2"
+                style={{
+                  width: 6,
+                  height: 6,
+                  background: 'var(--accent)',
+                  animation: 'aiag-pulse 2s ease-in-out infinite',
+                }}
+              />
+              400+ моделей · оплата в ₽ · без VPN
+            </span>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
-              Любая AI-модель.{' '}
-              <span className="bg-gradient-to-r from-amber-300 via-primary to-amber-600 bg-clip-text text-transparent">
-                Один API.
-              </span>
+            <h1
+              className="font-bold"
+              style={{
+                fontSize: 'clamp(44px, 6.4vw, 84px)',
+                lineHeight: 0.98,
+                letterSpacing: '-0.035em',
+                margin: '0 0 28px',
+                animation:
+                  'aiag-fade-up 700ms 300ms cubic-bezier(.23,1,.32,1) both',
+              }}
+            >
+              Any AI model.
               <br />
-              Оплата в рублях.
+              One API.
+              <br />
+              Payment in <span style={{ color: 'var(--accent)' }}>₽.</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl">
-              GPT, Claude, YandexGPT, GigaChat, Stable Diffusion, Whisper и
-              ещё десятки моделей. Без VPN, с RU-residency, 152-ФЗ. Pay
-              per-request — платите только за то, что используете.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 mt-2">
-              <Button asChild size="lg" className="font-semibold">
-                <Link href="/marketplace">
-                  Открыть каталог моделей{' '}
-                  <ArrowRight className="ms-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/register">Создать аккаунт</Link>
-              </Button>
-            </div>
-
-            {/* Code-snippet teaser */}
-            <div className="mt-8 w-full max-w-2xl rounded-lg border border-border bg-card/60 backdrop-blur p-4 font-mono text-xs md:text-sm overflow-x-auto">
-              <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
-                <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
-                <span className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
-                <span className="ms-2 text-[11px]">first-request.sh</span>
-              </div>
-              <pre className="text-foreground/90 whitespace-pre">
-{`$ curl https://api.ai-aggregator.ru/v1/chat/completions \\
-    -H "Authorization: Bearer $AIAG_KEY" \\
-    -d '{"model":"gpt-4o-mini","messages":[
-      {"role":"user","content":"Привет"}
-    ]}'`}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* VALUE PROPS strip */}
-      <section className="border-b border-border bg-background">
-        <div className="container mx-auto max-w-6xl px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {valueProps.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-foreground">{title}</div>
-                <p className="text-sm text-muted-foreground mt-0.5">{text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* FEATURES — 3 main */}
-      <section className="container mx-auto max-w-6xl px-4 py-20 md:py-24">
-        <div className="mb-12 max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Три продукта в одной платформе
-          </h2>
-          <p className="text-muted-foreground mt-3 text-lg">
-            Маркетплейс закрывает спрос. Конкурсы решают chicken-and-egg
-            проблему предложения. Оплата в рублях снимает барьер на входе для
-            российских команд.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {features.map(({ icon: Icon, title, text, cta }) => (
-            <div
-              key={title}
-              className="group relative flex flex-col rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-[0_0_0_1px_rgba(245,158,11,0.2),0_8px_32px_-8px_rgba(245,158,11,0.15)]"
+            <p
+              className="text-[18px]"
+              style={{
+                lineHeight: 1.55,
+                color: 'var(--ink-muted)',
+                maxWidth: 540,
+                margin: '0 0 36px',
+                animation:
+                  'aiag-fade-up 500ms 1000ms cubic-bezier(.23,1,.32,1) both',
+              }}
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary mb-5">
-                <Icon className="h-5 w-5" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">{title}</h3>
-              <p className="text-muted-foreground text-sm flex-1">{text}</p>
+              Подключайте любую AI-модель через OpenAI-совместимый API. GPT-5,
+              Claude, Flux, Veo, Whisper и сотни открытых моделей. Оплата
+              картой РФ, СБП, по счёту. Deploy в РФ-регионе — latency &lt;
+              100ms.
+            </p>
+
+            <div className="flex gap-3.5 flex-wrap">
               <Link
-                href={cta.href}
-                className="mt-5 inline-flex items-center text-sm font-medium text-primary hover:underline"
+                href="/marketplace"
+                className="inline-flex items-center gap-2 font-semibold rounded-sm transition-all hover:-translate-y-px"
+                style={{
+                  padding: '14px 24px',
+                  fontSize: 15,
+                  background: 'var(--accent)',
+                  color: '#000',
+                  border: '1px solid var(--accent)',
+                  animation:
+                    'aiag-fade-up 500ms 1200ms cubic-bezier(.23,1,.32,1) both',
+                  boxShadow: '0 0 0 0 rgba(245,158,11,0)',
+                }}
               >
-                {cta.label}{' '}
-                <ArrowRight className="ms-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                Запустить модель <span>→</span>
+              </Link>
+              <Link
+                href="/docs"
+                className="inline-flex items-center gap-2 font-semibold rounded-sm transition-colors hover:bg-white/[0.04]"
+                style={{
+                  padding: '14px 24px',
+                  fontSize: 15,
+                  background: 'transparent',
+                  color: 'var(--ink)',
+                  border: '1px solid var(--line)',
+                  animation:
+                    'aiag-fade-up 500ms 1280ms cubic-bezier(.23,1,.32,1) both',
+                }}
+              >
+                Документация
               </Link>
             </div>
+
+            <div
+              className="flex gap-6 flex-wrap font-mono"
+              style={{
+                marginTop: 32,
+                fontSize: 12,
+                color: 'var(--ink-muted)',
+                animation:
+                  'aiag-fade-up 500ms 1400ms cubic-bezier(.23,1,.32,1) both',
+              }}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <span style={{ color: 'var(--success)' }}>✓</span> T-Bank / СБП /
+                ЮKassa
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span style={{ color: 'var(--success)' }}>✓</span>{' '}
+                OpenAI-совместимый API
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span style={{ color: 'var(--success)' }}>✓</span> 99.9% uptime
+                SLA
+              </span>
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <HeroTerminal />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Providers strip ═══ */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          padding: '40px 0',
+          borderTop: '1px solid var(--line)',
+          borderBottom: '1px solid var(--line)',
+          maskImage:
+            'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
+          WebkitMaskImage:
+            'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
+        }}
+      >
+        <div
+          className="text-center font-mono uppercase"
+          style={{
+            fontSize: 11,
+            color: 'var(--ink-muted)',
+            marginBottom: 24,
+            letterSpacing: '0.12em',
+          }}
+        >
+          Работаем с ведущими AI-провайдерами
+        </div>
+        <div className="aiag-logo-track">
+          {[...providers, ...providers].map((p, i) => (
+            <span
+              key={i}
+              className="font-mono whitespace-nowrap font-medium"
+              style={{
+                fontSize: 15,
+                color: 'var(--ink-muted)',
+                opacity: 0.6,
+              }}
+            >
+              {p}
+            </span>
           ))}
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="border-t border-border bg-gradient-to-b from-background via-background to-card/40">
-        <div className="container mx-auto max-w-4xl px-4 py-20 md:py-24 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-            Подключите модели за{' '}
-            <span className="text-primary">2 минуты</span>
-          </h2>
-          <p className="text-muted-foreground mt-4 text-lg max-w-2xl mx-auto">
-            Регистрация занимает минуту. Free-tier даёт 200 кредитов на
-            тесты. Платёж в рублях, без VPN, без валютных комиссий.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button asChild size="lg" className="font-semibold">
-              <Link href="/register">
-                Начать бесплатно <ArrowRight className="ms-2 h-4 w-4" />
+      {/* ═══ Scenarios ═══ */}
+      <section style={{ padding: '96px 20px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="mb-14">
+            <div
+              className="font-mono uppercase mb-3.5"
+              style={{ fontSize: 11, color: 'var(--accent)', letterSpacing: '0.12em' }}
+            >
+              // Что вы строите?
+            </div>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 48px)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                margin: '0 0 16px',
+              }}
+            >
+              Выберите сценарий — получите нужные модели
+            </h2>
+            <p
+              style={{ fontSize: 17, color: 'var(--ink-muted)', maxWidth: 600 }}
+            >
+              Пять готовых направлений с примерами запуска. Откройте любой — и
+              получите curated список моделей с метриками.
+            </p>
+          </div>
+
+          <div
+            className="grid gap-4"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
+          >
+            {scenarios.map((s) => (
+              <Link
+                key={s.title}
+                href="/marketplace"
+                className="block transition-all hover:-translate-y-1"
+                style={{
+                  padding: 24,
+                  border: '1px solid var(--line)',
+                  borderRadius: 4,
+                  background: 'var(--bg-elev)',
+                }}
+              >
+                <div
+                  className="grid place-items-center mb-4"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 2,
+                    background: 'rgba(245,158,11,0.12)',
+                    color: 'var(--accent)',
+                    fontSize: 18,
+                    border: '1px solid rgba(245,158,11,0.2)',
+                  }}
+                >
+                  {s.icon}
+                </div>
+                <div className="font-semibold text-[15px] mb-1.5">
+                  {s.title}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.5 }}
+                >
+                  {s.desc}
+                </div>
               </Link>
-            </Button>
-            <Button asChild size="lg" variant="ghost">
-              <Link href="/docs">Посмотреть документацию</Link>
-            </Button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-border bg-background">
-        <div className="container mx-auto max-w-6xl px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
-          <div className="col-span-2">
-            <div className="font-mono font-bold text-foreground">
-              ai-aggregator<span className="text-primary">.ru</span>
-            </div>
-            <p className="text-muted-foreground mt-2 max-w-xs">
-              Маркетплейс AI-моделей с API в рублях. ИП, РФ. 152-ФЗ
-              compliant.
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <a
-                href="https://t.me/aiaggregatorsupport"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Telegram"
-                className="text-muted-foreground hover:text-primary transition-colors"
+      {/* ═══ Catalog teaser ═══ */}
+      <section style={{ padding: '32px 20px 96px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="flex justify-between items-end mb-8 flex-wrap gap-4">
+            <div>
+              <div
+                className="font-mono uppercase mb-3.5"
+                style={{
+                  fontSize: 11,
+                  color: 'var(--accent)',
+                  letterSpacing: '0.12em',
+                }}
               >
-                <Send className="h-5 w-5" />
-              </a>
-              <a
-                href="mailto:team@ai-aggregator.ru"
-                aria-label="Email"
-                className="text-muted-foreground hover:text-primary transition-colors"
+                // Топ-модели недели
+              </div>
+              <h2
+                className="font-bold"
+                style={{
+                  fontSize: 'clamp(32px, 4vw, 48px)',
+                  lineHeight: 1.05,
+                  letterSpacing: '-0.025em',
+                  margin: '0 0 8px',
+                }}
               >
-                <Mail className="h-5 w-5" />
-              </a>
+                Горячее сейчас
+              </h2>
+              <p style={{ fontSize: 17, color: 'var(--ink-muted)', maxWidth: 600 }}>
+                По количеству запросов за 7 дней. Цены в ₽, latency РФ-регион.
+              </p>
             </div>
+            <Link
+              href="/marketplace"
+              className="inline-flex items-center gap-2 px-4 py-2.5 font-semibold rounded-sm hover:bg-white/[0.04] transition-colors"
+              style={{
+                fontSize: 13,
+                border: '1px solid var(--line)',
+                color: 'var(--ink)',
+              }}
+            >
+              Весь каталог <span>→</span>
+            </Link>
           </div>
-          <div>
-            <div className="font-semibold text-foreground mb-3">Продукт</div>
-            <ul className="space-y-2 text-muted-foreground">
-              <li><Link href="/marketplace" className="hover:text-foreground">Маркетплейс</Link></li>
-              <li><Link href="/pricing" className="hover:text-foreground">Тарифы</Link></li>
-              <li><Link href="/docs" className="hover:text-foreground">Документация</Link></li>
-              <li><Link href="/contests" className="hover:text-foreground">Конкурсы</Link></li>
-            </ul>
-          </div>
-          <div>
-            <div className="font-semibold text-foreground mb-3">Правовое</div>
-            <ul className="space-y-2 text-muted-foreground">
-              <li><Link href="/privacy" className="hover:text-foreground">Конфиденциальность</Link></li>
-              <li><Link href="/terms" className="hover:text-foreground">Условия</Link></li>
-            </ul>
+
+          <div
+            className="grid gap-5"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}
+          >
+            {topModels.map((m) => (
+              <Link
+                key={m.title}
+                href="/marketplace"
+                className="block transition-all hover:-translate-y-1 cursor-pointer"
+                style={{
+                  background: 'var(--bg-elev)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 4,
+                  padding: 20,
+                }}
+              >
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div
+                    className="grid place-items-center font-mono font-bold"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 3,
+                      background: 'var(--bg-surface)',
+                      fontSize: 13,
+                      color: 'var(--accent)',
+                      border: '1px solid var(--line)',
+                    }}
+                  >
+                    {m.code}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-[14px]">{m.title}</div>
+                    <div
+                      className="font-mono"
+                      style={{ fontSize: 11, color: 'var(--ink-muted)' }}
+                    >
+                      {m.provider}
+                    </div>
+                  </div>
+                </div>
+                <div className="my-2">
+                  {m.chips.map((c) => (
+                    <span
+                      key={c}
+                      className="inline-block font-mono mr-1"
+                      style={{
+                        padding: '3px 8px',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid var(--line)',
+                        borderRadius: 2,
+                        fontSize: 10,
+                        color: 'var(--ink-muted)',
+                      }}
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--ink-muted)',
+                    lineHeight: 1.5,
+                    margin: '12px 0',
+                    minHeight: 36,
+                  }}
+                >
+                  {m.desc}
+                </div>
+                <div
+                  className="flex justify-between items-center font-mono"
+                  style={{
+                    paddingTop: 12,
+                    borderTop: '1px solid var(--line)',
+                    fontSize: 12,
+                  }}
+                >
+                  <div
+                    className="font-semibold"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    {m.price}
+                  </div>
+                  <div style={{ color: 'var(--ink-muted)', fontSize: 11 }}>
+                    {m.stats}
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
-        <div className="border-t border-border">
-          <div className="container mx-auto max-w-6xl px-4 py-5 text-xs text-muted-foreground flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <span>© {new Date().getFullYear()} AI Aggregator</span>
-            <span className="font-mono">team@ai-aggregator.ru · @aiaggregatorsupport</span>
+      </section>
+
+      {/* ═══ How it works ═══ */}
+      <section
+        style={{ padding: '96px 20px', background: 'var(--bg-elev)' }}
+      >
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="mb-14">
+            <div
+              className="font-mono uppercase mb-3.5"
+              style={{
+                fontSize: 11,
+                color: 'var(--accent)',
+                letterSpacing: '0.12em',
+              }}
+            >
+              // Как это работает
+            </div>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 48px)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                margin: '0 0 16px',
+              }}
+            >
+              Первый запрос за 2 минуты
+            </h2>
+            <p style={{ fontSize: 17, color: 'var(--ink-muted)', maxWidth: 600 }}>
+              OpenAI SDK → меняете base URL → работает. Без миграции кода.
+            </p>
           </div>
+
+          <div
+            className="grid gap-8"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}
+          >
+            {steps.map((s) => (
+              <div
+                key={s.num}
+                style={{
+                  padding: '32px 28px',
+                  border: '1px solid var(--line)',
+                  borderRadius: 4,
+                  background: 'var(--bg-surface)',
+                }}
+              >
+                <div
+                  className="font-mono"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--accent)',
+                    letterSpacing: '0.1em',
+                    marginBottom: 16,
+                  }}
+                >
+                  {s.num}
+                </div>
+                <div className="font-semibold mb-2.5" style={{ fontSize: 22 }}>
+                  {s.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: 'var(--ink-muted)',
+                    lineHeight: 1.6,
+                    marginBottom: 16,
+                  }}
+                >
+                  {s.desc}
+                </div>
+                <div
+                  className="font-mono overflow-x-auto"
+                  style={{
+                    padding: '12px 14px',
+                    background: '#0f0f11',
+                    border: '1px solid var(--line)',
+                    borderRadius: 3,
+                    fontSize: 12,
+                    color: 'var(--ink-muted)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {s.code}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Comparison ═══ */}
+      <section style={{ padding: '96px 20px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="mb-14">
+            <div
+              className="font-mono uppercase mb-3.5"
+              style={{
+                fontSize: 11,
+                color: 'var(--accent)',
+                letterSpacing: '0.12em',
+              }}
+            >
+              // Чем отличаемся
+            </div>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 48px)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                margin: '0 0 16px',
+              }}
+            >
+              AI-Aggregator vs альтернативы
+            </h2>
+            <p style={{ fontSize: 17, color: 'var(--ink-muted)', maxWidth: 600 }}>
+              Прямое сравнение по критериям, важным для российского
+              разработчика.
+            </p>
+          </div>
+
+          <div
+            className="overflow-x-auto"
+            style={{
+              background: 'var(--bg-elev)',
+              border: '1px solid var(--line)',
+              borderRadius: 6,
+            }}
+          >
+            <table
+              className="w-full"
+              style={{ borderCollapse: 'collapse', minWidth: 600 }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    className="font-mono uppercase font-semibold"
+                    style={{
+                      width: '30%',
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      borderBottom: '1px solid var(--line)',
+                      background: 'var(--bg-surface)',
+                      fontSize: 12,
+                      color: 'var(--ink-muted)',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    Критерий
+                  </th>
+                  <th
+                    className="font-mono uppercase font-semibold"
+                    style={{
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      borderBottom: '1px solid var(--line)',
+                      background: 'rgba(245,158,11,0.12)',
+                      fontSize: 12,
+                      color: 'var(--accent)',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    AI-Aggregator
+                  </th>
+                  {['Replicate', 'Hugging Face', 'Polza.ai'].map((h) => (
+                    <th
+                      key={h}
+                      className="font-mono uppercase font-semibold"
+                      style={{
+                        padding: '16px 20px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid var(--line)',
+                        background: 'var(--bg-surface)',
+                        fontSize: 12,
+                        color: 'var(--ink-muted)',
+                        letterSpacing: '0.08em',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {compareRows.map((row, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-white/[0.02] transition-colors"
+                  >
+                    <td
+                      className="font-medium"
+                      style={{
+                        padding: '16px 20px',
+                        borderBottom:
+                          idx === compareRows.length - 1
+                            ? 'none'
+                            : '1px solid var(--line)',
+                        fontSize: 14,
+                        color: 'var(--ink)',
+                      }}
+                    >
+                      {row.feat}
+                    </td>
+                    <td
+                      className="font-mono"
+                      style={{
+                        padding: '16px 20px',
+                        borderBottom:
+                          idx === compareRows.length - 1
+                            ? 'none'
+                            : '1px solid var(--line)',
+                        fontSize: 14,
+                        background: 'rgba(245,158,11,0.04)',
+                        color: cellColor[row.us.kind],
+                      }}
+                    >
+                      {row.us.text}
+                    </td>
+                    {row.cells.map((c, i) => (
+                      <td
+                        key={i}
+                        className="font-mono"
+                        style={{
+                          padding: '16px 20px',
+                          borderBottom:
+                            idx === compareRows.length - 1
+                              ? 'none'
+                              : '1px solid var(--line)',
+                          fontSize: 14,
+                          color: cellColor[c.kind],
+                        }}
+                      >
+                        {c.text}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Pricing ═══ */}
+      <section
+        style={{ padding: '96px 20px', background: 'var(--bg-elev)' }}
+      >
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="mb-14">
+            <div
+              className="font-mono uppercase mb-3.5"
+              style={{
+                fontSize: 11,
+                color: 'var(--accent)',
+                letterSpacing: '0.12em',
+              }}
+            >
+              // Тарифы
+            </div>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 48px)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                margin: '0 0 16px',
+              }}
+            >
+              Pay-as-you-go или депозит
+            </h2>
+            <p style={{ fontSize: 17, color: 'var(--ink-muted)', maxWidth: 600 }}>
+              Free-тариф для экспериментов. Подписки — бонус к балансу и
+              снижение цены запроса до -25%.
+            </p>
+          </div>
+
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}
+          >
+            {pricingTiers.map((p) => (
+              <div
+                key={p.tier}
+                className="relative transition-all hover:-translate-y-0.5"
+                style={{
+                  background: p.featured
+                    ? 'linear-gradient(180deg, rgba(245,158,11,0.08) 0%, var(--bg-surface) 100%)'
+                    : 'var(--bg-surface)',
+                  border: `1px solid ${p.featured ? 'var(--accent)' : 'var(--line)'}`,
+                  borderRadius: 4,
+                  padding: '22px 18px',
+                }}
+              >
+                {p.featured && (
+                  <div
+                    className="absolute font-bold uppercase"
+                    style={{
+                      top: -10,
+                      left: 18,
+                      background: 'var(--accent)',
+                      color: '#000',
+                      padding: '3px 10px',
+                      fontSize: 10,
+                      borderRadius: 2,
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    Популярный
+                  </div>
+                )}
+                <div
+                  className="font-mono uppercase mb-2.5"
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--ink-muted)',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  {p.tier}
+                </div>
+                <div
+                  className="font-mono font-bold"
+                  style={{ fontSize: 24, letterSpacing: '-0.02em' }}
+                >
+                  {p.price}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--ink-muted)',
+                    lineHeight: 1.5,
+                    margin: '14px 0',
+                  }}
+                >
+                  {p.desc}
+                </div>
+                <Link
+                  href="/pricing"
+                  className="block text-center font-semibold transition-all"
+                  style={{
+                    padding: 8,
+                    border: `1px solid ${p.featured ? 'var(--accent)' : 'var(--line)'}`,
+                    borderRadius: 2,
+                    fontSize: 12,
+                    background: p.featured ? 'var(--accent)' : 'transparent',
+                    color: p.featured ? '#000' : 'var(--ink)',
+                  }}
+                >
+                  {p.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ FAQ ═══ */}
+      <section style={{ padding: '96px 20px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="text-center mb-14">
+            <div
+              className="font-mono uppercase mb-3.5"
+              style={{
+                fontSize: 11,
+                color: 'var(--accent)',
+                letterSpacing: '0.12em',
+              }}
+            >
+              // FAQ
+            </div>
+            <h2
+              className="font-bold"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 48px)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                margin: 0,
+              }}
+            >
+              Часто задаваемые вопросы
+            </h2>
+          </div>
+          <HomeFaq />
+        </div>
+      </section>
+
+      {/* ═══ Bottom CTA ═══ */}
+      <section
+        className="relative overflow-hidden isolate text-center"
+        style={{
+          padding: '100px 20px',
+          borderTop: '1px solid var(--line)',
+          background:
+            'radial-gradient(ellipse at center top, rgba(245,158,11,0.08), transparent 60%)',
+        }}
+      >
+        <h2
+          className="font-bold"
+          style={{
+            fontSize: 'clamp(40px, 5vw, 64px)',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.02,
+            margin: '0 0 20px',
+          }}
+        >
+          Любая модель. Один API.
+          <br />
+          <span style={{ color: 'var(--accent)' }}>Оплата в ₽.</span>
+        </h2>
+        <p
+          style={{
+            color: 'var(--ink-muted)',
+            fontSize: 17,
+            margin: '0 auto 32px',
+            maxWidth: 520,
+          }}
+        >
+          400+ моделей, рублёвая оплата, SDK на 6 языках. Первый запрос за 2
+          минуты.
+        </p>
+        <div className="flex gap-3.5 flex-wrap justify-center">
+          <Link
+            href="/marketplace"
+            className="inline-flex items-center gap-2 font-semibold rounded-sm hover:-translate-y-px transition-all"
+            style={{
+              padding: '14px 24px',
+              fontSize: 15,
+              background: 'var(--accent)',
+              color: '#000',
+              border: '1px solid var(--accent)',
+            }}
+          >
+            Запустить модель <span>→</span>
+          </Link>
+          <Link
+            href="/docs"
+            className="inline-flex items-center gap-2 font-semibold rounded-sm hover:bg-white/[0.04] transition-colors"
+            style={{
+              padding: '14px 24px',
+              fontSize: 15,
+              background: 'transparent',
+              color: 'var(--ink)',
+              border: '1px solid var(--line)',
+            }}
+          >
+            Документация
+          </Link>
+        </div>
+      </section>
+
+      {/* ═══ Footer ═══ */}
+      <footer
+        style={{
+          padding: '56px 20px 32px',
+          borderTop: '1px solid var(--line)',
+          background: 'var(--bg-elev)',
+        }}
+      >
+        <div
+          className="grid gap-12"
+          style={{
+            maxWidth: 1280,
+            margin: '0 auto',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          }}
+        >
+          <div style={{ gridColumn: 'span 2' }} className="min-w-0">
+            <div className="font-mono font-bold tracking-tight text-[15px]">
+              ai<span style={{ color: 'var(--accent)' }}>-</span>aggregator
+            </div>
+            <p
+              style={{
+                color: 'var(--ink-muted)',
+                fontSize: 13,
+                lineHeight: 1.6,
+                marginTop: 12,
+                maxWidth: 320,
+              }}
+            >
+              Маркетплейс AI-моделей с OpenAI-совместимым API. Оплата в рублях.
+              Deploy в РФ-регионе. ИП Бобров М.А.
+            </p>
+          </div>
+
+          {[
+            {
+              h: 'Продукт',
+              links: [
+                ['Маркетплейс', '/marketplace'],
+                ['Конкурсы', '/contests'],
+                ['Тарифы', '/pricing'],
+              ],
+            },
+            {
+              h: 'Разработчикам',
+              links: [
+                ['Документация', '/docs'],
+                ['API Reference', '/docs'],
+                ['Status', '/status'],
+              ],
+            },
+            {
+              h: 'Компания',
+              links: [
+                ['Для бизнеса', '/business'],
+                ['Telegram', 'https://t.me/aiaggregatorsupport'],
+                ['Email', 'mailto:team@ai-aggregator.ru'],
+              ],
+            },
+            {
+              h: 'Правовое',
+              links: [
+                ['Условия', '/terms'],
+                ['Конфиденциальность', '/privacy'],
+              ],
+            },
+          ].map((col) => (
+            <div key={col.h}>
+              <h4
+                className="font-mono uppercase"
+                style={{
+                  fontSize: 11,
+                  color: 'var(--ink-muted)',
+                  letterSpacing: '0.1em',
+                  margin: '0 0 16px',
+                }}
+              >
+                {col.h}
+              </h4>
+              {col.links.map(([label, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="block hover:text-[var(--accent)] transition-colors"
+                  style={{
+                    color: 'var(--ink-muted)',
+                    fontSize: 13,
+                    padding: '4px 0',
+                  }}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div
+          className="flex flex-col md:flex-row justify-between gap-2 font-mono"
+          style={{
+            maxWidth: 1280,
+            margin: '40px auto 0',
+            paddingTop: 24,
+            borderTop: '1px solid var(--line)',
+            fontSize: 11,
+            color: 'var(--ink-muted)',
+            letterSpacing: '0.05em',
+          }}
+        >
+          <div>© {new Date().getFullYear()} AI-AGGREGATOR · MADE IN RU</div>
+          <div>team@ai-aggregator.ru · @aiaggregatorsupport</div>
         </div>
       </footer>
     </MainLayout>

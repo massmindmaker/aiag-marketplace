@@ -183,7 +183,7 @@ export default function HeroAnimation({
     <div
       aria-hidden
       className={className}
-      style={{ opacity, mixBlendMode: 'screen' as const }}
+      style={{ opacity, mixBlendMode: 'screen' as const, width: '100%', height: '100%' }}
     >
       <canvas
         ref={canvasRef}

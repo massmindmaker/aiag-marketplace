@@ -3,131 +3,153 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Home, Store, CreditCard, FileText, LogIn, UserPlus } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const mainMenu = [
   { title: 'Маркетплейс', href: '/marketplace' },
-  { title: 'Тарифы', href: '/pricing' },
+  { title: 'Конкурсы', href: '/contests' },
   { title: 'Документация', href: '/docs' },
-];
-
-const drawerItems = [
-  { title: 'Главная', href: '/', icon: Home },
-  { title: 'Маркетплейс', href: '/marketplace', icon: Store },
-  { title: 'Тарифы', href: '/pricing', icon: CreditCard },
-  { title: 'Документация', href: '/docs', icon: FileText },
-  { title: 'Войти', href: '/login', icon: LogIn },
-  { title: 'Регистрация', href: '/register', icon: UserPlus },
+  { title: 'Тарифы', href: '/pricing' },
+  { title: 'Для бизнеса', href: '/business' },
 ];
 
 /**
- * Plan 03: shadcn/Tailwind-based navbar (migrated from MUI AppBar + Tabs + Drawer).
+ * Pixel-match navbar per home.html mockup.
+ * Sticky, blurred dark, mono "ai-aggregator" wordmark with amber dash.
  */
 const MainNavbar = () => {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center px-4 md:px-6 gap-4">
+    <header
+      className="sticky top-0 z-50 w-full border-b backdrop-blur-md"
+      style={{
+        background: 'rgba(10,10,11,0.72)',
+        borderColor: 'var(--line)',
+      }}
+    >
+      <div className="flex items-center justify-between px-5 md:px-12 py-4">
         <Link
           href="/"
-          className="font-mono font-bold tracking-tight text-foreground"
+          className="font-mono font-bold tracking-tight text-[15px] select-none text-foreground"
         >
-          ai-aggregator<span className="text-primary">.ru</span>
+          ai<span style={{ color: 'var(--accent)' }}>-</span>aggregator
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 ms-8 text-sm">
-          {mainMenu.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'transition-colors hover:text-foreground',
-                pathname === item.href
-                  ? 'text-foreground font-medium'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {item.title}
-            </Link>
-          ))}
+        <nav className="hidden lg:flex items-center gap-7 text-[13px]">
+          {mainMenu.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'navlink relative py-1.5 transition-colors',
+                  active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {item.title}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="ms-auto flex items-center gap-2">
-          <div className="hidden md:block">
-            <ThemeToggle />
-          </div>
-          <div className="hidden md:flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/login">Войти</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/register">Регистрация</Link>
-            </Button>
-          </div>
-          <button
-            type="button"
-            aria-label="Открыть меню"
-            className="md:hidden p-2 rounded-md hover:bg-secondary transition-colors"
-            onClick={() => setDrawerOpen(true)}
+        <div className="hidden lg:flex items-center gap-2.5">
+          <Link
+            href="/login"
+            className="inline-flex items-center px-4 py-2 text-[13px] font-semibold rounded-[2px] border transition-colors hover:bg-white/[0.04]"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
           >
-            <Menu className="h-5 w-5" />
-          </button>
+            Войти
+          </Link>
+          <Link
+            href="/register"
+            className="inline-flex items-center px-4 py-2 text-[13px] font-semibold rounded-[2px] border transition-all hover:-translate-y-px"
+            style={{
+              background: 'var(--accent)',
+              color: '#000',
+              borderColor: 'var(--accent)',
+            }}
+          >
+            Регистрация
+          </Link>
         </div>
+
+        <button
+          type="button"
+          aria-label="Открыть меню"
+          className="lg:hidden p-2 rounded-md hover:bg-white/[0.04] transition-colors"
+          onClick={() => setDrawerOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
       </div>
 
-      {/* Mobile drawer */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-50 md:hidden"
+          className="fixed inset-0 z-50 lg:hidden"
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-black/70"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="absolute inset-y-0 end-0 w-72 bg-card border-s border-border shadow-xl flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <span className="font-semibold">Меню</span>
+          <aside
+            className="absolute inset-y-0 end-0 w-72 border-s shadow-xl flex flex-col"
+            style={{ background: 'var(--bg-elev)', borderColor: 'var(--line)' }}
+          >
+            <div
+              className="flex items-center justify-between p-4 border-b"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <span className="font-mono font-bold text-sm">
+                ai<span style={{ color: 'var(--accent)' }}>-</span>aggregator
+              </span>
               <button
                 type="button"
                 aria-label="Закрыть меню"
-                className="p-2 rounded-md hover:bg-secondary transition-colors"
+                className="p-2 rounded-md hover:bg-white/[0.04] transition-colors"
                 onClick={() => setDrawerOpen(false)}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <ul className="flex flex-col p-2">
-              {drawerItems.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href;
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
-                        active
-                          ? 'bg-secondary text-primary font-medium'
-                          : 'text-foreground hover:bg-secondary'
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.title}
-                    </Link>
-                  </li>
-                );
-              })}
+            <ul className="flex flex-col p-2 flex-1">
+              {mainMenu.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setDrawerOpen(false)}
+                    className="block px-4 py-3 text-sm hover:bg-white/[0.04] rounded"
+                  >
+                    {item.title}
+                  </Link>
+                </li>
+              ))}
             </ul>
-            <div className="mt-auto p-4 border-t border-border">
-              <ThemeToggle />
+            <div
+              className="p-4 border-t flex flex-col gap-2"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <Link
+                href="/login"
+                onClick={() => setDrawerOpen(false)}
+                className="inline-flex justify-center items-center px-4 py-2.5 text-sm font-semibold rounded-[2px] border"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                Войти
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setDrawerOpen(false)}
+                className="inline-flex justify-center items-center px-4 py-2.5 text-sm font-semibold rounded-[2px]"
+                style={{ background: 'var(--accent)', color: '#000' }}
+              >
+                Регистрация
+              </Link>
             </div>
           </aside>
         </div>
