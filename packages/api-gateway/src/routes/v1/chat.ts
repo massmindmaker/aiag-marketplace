@@ -21,7 +21,7 @@ import { calcCostRub, calcByokFeeRub } from '../../lib/pricing';
 import { settleCharge } from '../../billing/settle';
 import { logRequest } from '../../logging/stream';
 import { streamSseAndSettle } from '../../streaming/sse';
-import { mockUpstream } from '../../upstreams/mock';
+import { getUpstream } from '../../upstreams/registry';
 import type { AuthenticatedApiKey } from '../../middleware/auth-plan04';
 
 export const chat = new Hono();
@@ -65,9 +65,10 @@ chat.post('/completions', async (c) => {
   }
 
   const start = Date.now();
+  const upstreamAdapter = getUpstream(upstream.provider);
 
   if (body.stream) {
-    const iter = mockUpstream.chatStream!({
+    const iter = upstreamAdapter.chatStream!({
       modelId: upstream.upstream_model_id,
       messages: body.messages,
       stream: true,
@@ -82,7 +83,7 @@ chat.post('/completions', async (c) => {
     });
   }
 
-  const resp = await mockUpstream.chat({
+  const resp = await upstreamAdapter.chat({
     modelId: upstream.upstream_model_id,
     messages: body.messages,
     stream: false,

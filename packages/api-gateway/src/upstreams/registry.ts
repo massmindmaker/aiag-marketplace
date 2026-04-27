@@ -1,0 +1,26 @@
+/**
+ * Upstream registry: dispatches a resolved provider name to its concrete
+ * UpstreamAdapter implementation. Falls back to mockUpstream for providers
+ * that haven't been wired yet (yandex, fal, replicate, etc.).
+ *
+ * Selection order per provider:
+ *  - "openrouter" → real OpenRouter API (requires OPENROUTER_API_KEY env)
+ *  - everything else → mock (deterministic test response)
+ *
+ * Override knobs:
+ *  - AIAG_FORCE_MOCK=1 → always returns mock (useful for CI/local without keys)
+ */
+import type { UpstreamAdapter } from './interface';
+import { mockUpstream } from './mock';
+import { openRouterUpstream } from './openrouter';
+
+export function getUpstream(provider: string): UpstreamAdapter {
+  if (process.env.AIAG_FORCE_MOCK === '1') return mockUpstream;
+  switch (provider) {
+    case 'openrouter':
+      // Only use real adapter if a key is configured; otherwise mock.
+      return process.env.OPENROUTER_API_KEY ? openRouterUpstream : mockUpstream;
+    default:
+      return mockUpstream;
+  }
+}

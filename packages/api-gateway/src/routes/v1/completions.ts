@@ -7,7 +7,7 @@ import { fetchUsdRubRate } from '../../lib/cbr';
 import { calcCostRub, calcByokFeeRub } from '../../lib/pricing';
 import { settleCharge } from '../../billing/settle';
 import { logRequest } from '../../logging/stream';
-import { mockUpstream } from '../../upstreams/mock';
+import { getUpstream } from '../../upstreams/registry';
 import type { AuthenticatedApiKey } from '../../middleware/auth-plan04';
 
 export const completions = new Hono();
@@ -36,7 +36,8 @@ completions.post('/', async (c) => {
   const start = Date.now();
 
   const promptText = Array.isArray(body.prompt) ? body.prompt.join('\n') : body.prompt;
-  const resp = await mockUpstream.chat({
+  const upstreamAdapter = getUpstream(upstream.provider);
+  const resp = await upstreamAdapter.chat({
     modelId: upstream.upstream_model_id,
     messages: [{ role: 'user', content: promptText }],
   });

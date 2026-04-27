@@ -5,7 +5,10 @@ export type RedisRole = 'cache' | 'streams' | 'ratelimit';
 
 const ROLE_OPTS: Record<RedisRole, RedisOptions> = {
   cache: {
-    enableOfflineQueue: false,
+    // FIX: keep offline queue enabled to avoid race during initial AUTH
+    // (ioredis would otherwise reject the first request with
+    // "Stream isn't writeable and enableOfflineQueue options is false").
+    enableOfflineQueue: true,
     maxRetriesPerRequest: 1,
     connectionName: 'gw-cache',
   },
@@ -15,7 +18,8 @@ const ROLE_OPTS: Record<RedisRole, RedisOptions> = {
     connectionName: 'gw-streams',
   },
   ratelimit: {
-    enableOfflineQueue: false,
+    // Same race-fix as cache role.
+    enableOfflineQueue: true,
     maxRetriesPerRequest: 1,
     connectionName: 'gw-ratelimit',
   },
