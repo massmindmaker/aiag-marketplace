@@ -119,6 +119,10 @@ export const gatewayApiKeys = pgTable(
     rpmLimit: integer('rpm_limit').notNull().default(60),
     dailyUsdCap: numeric('daily_usd_cap', { precision: 12, scale: 2 }),
     batchRpmLimit: integer('batch_rpm_limit').notNull().default(10),
+    costLimitMonthlyRub: numeric('cost_limit_monthly_rub', { precision: 10, scale: 2 }),
+    modelWhitelist: jsonb('model_whitelist').$type<string[]>().notNull().default([]),
+    ruResidencyOnly: boolean('ru_residency_only').notNull().default(false),
+    disabledAt: timestamp('disabled_at', { withTimezone: true }),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -347,6 +351,37 @@ export const upstreamHealth = pgTable(
 );
 
 // -----------------------------------------------------------------------------
+// model_submissions (Plan 10 — supply-side direct model submissions)
+// -----------------------------------------------------------------------------
+export const modelSubmissions = pgTable(
+  'model_submissions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull(),
+    name: varchar('name', { length: 200 }).notNull(),
+    slug: varchar('slug', { length: 128 }).notNull(),
+    modality: varchar('modality', { length: 20 }).notNull(),
+    description: text('description').notNull(),
+    outboundKind: varchar('outbound_kind', { length: 32 }).notNull(),
+    upstreamUrl: text('upstream_url'),
+    pricing: jsonb('pricing').notNull().default({}),
+    ruResidency: boolean('ru_residency').notNull().default(false),
+    piiRisk: varchar('pii_risk', { length: 16 }).notNull().default('low'),
+    gdprApplicable: boolean('gdpr_applicable').notNull().default(false),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    adminNote: text('admin_note'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewedBy: uuid('reviewed_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index('model_submissions_user_idx').on(t.userId, t.createdAt),
+    statusIdx: index('model_submissions_status_idx').on(t.status, t.createdAt),
+  })
+);
+
+// -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 export type Upstream = typeof upstreams.$inferSelect;
@@ -362,3 +397,5 @@ export type GatewayTransaction = typeof gatewayTransactions.$inferSelect;
 export type PiiDetection = typeof piiDetections.$inferSelect;
 export type PredictionJob = typeof predictionJobs.$inferSelect;
 export type Batch = typeof batches.$inferSelect;
+export type ModelSubmission = typeof modelSubmissions.$inferSelect;
+export type NewModelSubmission = typeof modelSubmissions.$inferInsert;

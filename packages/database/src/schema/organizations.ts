@@ -6,6 +6,7 @@ import {
   boolean,
   varchar,
   jsonb,
+  numeric,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -54,6 +55,11 @@ export const organizations = pgTable(
 
     // Status
     isActive: boolean('is_active').default(true).notNull(),
+
+    // Plan 10 — auto top-up settings
+    autoTopupEnabled: boolean('auto_topup_enabled').default(false).notNull(),
+    autoTopupThreshold: numeric('auto_topup_threshold', { precision: 10, scale: 2 }),
+    autoTopupAmount: numeric('auto_topup_amount', { precision: 10, scale: 2 }),
 
     // Owner
     ownerId: uuid('owner_id')
