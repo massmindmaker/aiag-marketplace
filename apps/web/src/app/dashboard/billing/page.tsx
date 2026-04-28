@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowRight, CreditCard, Wallet, Crown, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, CreditCard, Wallet, Crown, Plus, Zap } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Switch } from '@/components/ui/Switch';
 import { cn } from '@/lib/utils';
 
 type ProviderId = 'tinkoff' | 'yookassa' | 'sbp';
@@ -35,6 +38,58 @@ export default function BillingPage() {
   const [topupProvider, setTopupProvider] = useState<ProviderId>('tinkoff');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto top-up state
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoThreshold, setAutoThreshold] = useState('500');
+  const [autoAmount, setAutoAmount] = useState('1000');
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoMsg, setAutoMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/dashboard/billing/auto-topup');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.autoTopup) {
+          setAutoEnabled(!!data.autoTopup.enabled);
+          if (data.autoTopup.thresholdRub != null)
+            setAutoThreshold(String(data.autoTopup.thresholdRub));
+          if (data.autoTopup.amountRub != null)
+            setAutoAmount(String(data.autoTopup.amountRub));
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  async function saveAutoTopup() {
+    setAutoSaving(true);
+    setAutoMsg(null);
+    try {
+      const res = await fetch('/api/dashboard/billing/auto-topup', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: autoEnabled,
+          thresholdRub: autoEnabled ? Number(autoThreshold) : null,
+          amountRub: autoEnabled ? Number(autoAmount) : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAutoMsg(data.error || `HTTP ${res.status}`);
+        return;
+      }
+      setAutoMsg('Сохранено');
+    } catch (e) {
+      setAutoMsg((e as Error).message);
+    } finally {
+      setAutoSaving(false);
+    }
+  }
 
   async function handleTopup() {
     setError(null);
@@ -172,6 +227,55 @@ export default function BillingPage() {
             {pending
               ? 'Перенаправляем…'
               : `Пополнить на ${topupAmount.toLocaleString('ru-RU')} ₽`}
+          </Button>
+        </div>
+
+        {/* Auto top-up */}
+        <div className="rounded-2xl border border-border bg-card p-6 mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Автопополнение</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Когда баланс PAYG опустится ниже порога — мы автоматически спишем указанную сумму с привязанной карты.
+          </p>
+          <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 mb-4">
+            <Label htmlFor="auto-en" className="cursor-pointer">
+              Включить автопополнение
+            </Label>
+            <Switch
+              id="auto-en"
+              checked={autoEnabled}
+              onCheckedChange={setAutoEnabled}
+            />
+          </div>
+          {autoEnabled && (
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <Label htmlFor="auto-th">Порог (₽)</Label>
+                <Input
+                  id="auto-th"
+                  inputMode="numeric"
+                  value={autoThreshold}
+                  onChange={(e) => setAutoThreshold(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="auto-am">Сумма пополнения (₽)</Label>
+                <Input
+                  id="auto-am"
+                  inputMode="numeric"
+                  value={autoAmount}
+                  onChange={(e) => setAutoAmount(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          {autoMsg && (
+            <p className="text-xs text-muted-foreground mb-2">{autoMsg}</p>
+          )}
+          <Button onClick={saveAutoTopup} disabled={autoSaving}>
+            {autoSaving ? 'Сохраняем…' : 'Сохранить'}
           </Button>
         </div>
 
