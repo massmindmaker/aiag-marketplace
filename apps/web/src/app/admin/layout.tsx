@@ -1,43 +1,48 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/auth';
+import { db, eq } from '@/lib/db';
+import { users } from '@aiag/database/schema';
 
-/**
- * Admin layout: minimal RBAC stub.
- *
- * TODO: real role check. For now we only require an authenticated session;
- * full RBAC ('admin' role) lands in a follow-up plan. Anyone able to log in
- * sees the admin queue — acceptable while staging is closed-beta.
- */
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const dynamic = 'force-dynamic';
+
+const NAV: { href: string; label: string }[] = [
+  { href: '/admin', label: 'Обзор' },
+  { href: '/admin/users', label: 'Юзеры' },
+  { href: '/admin/orgs', label: 'Орги' },
+  { href: '/admin/models', label: 'Модели' },
+  { href: '/admin/upstreams', label: 'Аплинки' },
+  { href: '/admin/contests', label: 'Контесты' },
+  { href: '/admin/payouts', label: 'Выплаты' },
+  { href: '/admin/payments', label: 'Платежи' },
+  { href: '/admin/moderation/models', label: 'Модерация' },
+  { href: '/admin/audit', label: 'Аудит' },
+  { href: '/admin/webhooks', label: 'Вебхуки' },
+  { href: '/admin/settings', label: 'Настройки' },
+];
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user) {
-    redirect('/login?next=/admin');
-  }
+  if (!session?.user?.email) redirect('/login?next=/admin');
+
+  const u = await db.query.users.findFirst({
+    where: eq(users.email, session.user.email),
+  });
+  if (!u || u.role !== 'admin') redirect('/dashboard');
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-6 text-sm">
-          <Link href="/admin" className="font-semibold">
-            Админка
+    <div className="min-h-screen flex flex-col bg-background">
+      <nav className="border-b bg-card sticky top-0 z-30">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-4 text-sm flex-wrap">
+          <Link href="/admin" className="font-semibold text-amber-500">
+            AIAG · Admin
           </Link>
-          <Link href="/admin/models" className="hover:text-primary">
-            Модели
-          </Link>
-          <Link href="/admin/moderation/models" className="hover:text-primary">
-            Модерация
-          </Link>
-          <Link href="/admin/moderation/submissions" className="hover:text-primary">
-            Сабмишены
-          </Link>
-          <span className="ml-auto text-muted-foreground">
-            {session.user.email}
-          </span>
+          {NAV.map((n) => (
+            <Link key={n.href} href={n.href} className="hover:text-amber-400 text-muted-foreground">
+              {n.label}
+            </Link>
+          ))}
+          <span className="ml-auto text-muted-foreground">{session.user.email}</span>
         </div>
       </nav>
       {children}

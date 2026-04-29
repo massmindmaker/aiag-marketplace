@@ -32,6 +32,9 @@ export * from './notifications';
 // Plan 04 Gateway — canonical gateway schema
 export * from './gateway';
 
+// Plan 11 — Admin settings
+export * from './adminSettings';
+
 // Plan 08 — Launch-time compliance + ops
 export * from './moderation';
 export * from './fraudFlags';
