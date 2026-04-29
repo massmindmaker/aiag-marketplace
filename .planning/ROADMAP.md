@@ -197,6 +197,36 @@ Plans:
 Plans:
 - [ ] 09-01: Foreign entity outline — research + entity setup + payment integration
 
+### Phase 10: User Self-Service Dashboard — keys CRUD with per-key cost limits, usage analytics, billing extension, supply submit-model
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 9
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 10 to break down)
+
+### Phase 11: Admin Panel Complete — users, orgs, upstreams health/keys, contests CRUD, settings, audit log, payouts approval, webhooks retry
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11 to break down)
+
+### Phase 12: Admin Critical Views — request inspector + routing matrix + async jobs + business dashboard
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
+
 ---
 
 ## Progress
