@@ -66,6 +66,30 @@ export default async function AdminSettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-sm">Реферальная программа</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SettingsForm
+            section="referrals"
+            fields={[
+              { key: 'referral_enabled', label: 'Реф. система включена', type: 'bool' },
+              { key: 'referral_bonus_referrer_rub', label: 'Бонус рефереру ₽', type: 'number' },
+              { key: 'referral_bonus_referred_rub', label: 'Бонус новому юзеру ₽', type: 'number' },
+              { key: 'referral_qualifying_event', label: 'Qualifying event (json)', type: 'json' },
+              { key: 'referral_min_topup_rub', label: 'Мин top-up для qualify ₽', type: 'number' },
+              {
+                key: 'referral_max_bonus_per_referrer_per_month_rub',
+                label: 'Кэп ₽/мес/реферер',
+                type: 'number',
+              },
+            ]}
+            values={settings}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-sm">Compliance</CardTitle>
         </CardHeader>
         <CardContent>
