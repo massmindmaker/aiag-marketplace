@@ -39,7 +39,7 @@ async function fetchUsers(query: string, status: string): Promise<UserRow[]> {
       ORDER BY u.created_at DESC
       LIMIT 200
     `);
-    const rows = (result as { rows?: UserRow[] }).rows ?? (result as unknown as UserRow[]);
+    const rows = (result as unknown as { rows?: UserRow[] }).rows ?? (result as unknown as UserRow[]);
     let filtered = rows;
     if (query) {
       const q = query.toLowerCase();

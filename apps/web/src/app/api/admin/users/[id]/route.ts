@@ -39,8 +39,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         createdAt: u.createdAt,
         lastLoginAt: u.lastLoginAt,
       },
-      orgs: (orgs as { rows?: unknown[] }).rows ?? orgs,
-      transactions: (txs as { rows?: unknown[] }).rows ?? txs,
+      orgs: (orgs as unknown as { rows?: unknown[] }).rows ?? orgs,
+      transactions: (txs as unknown as { rows?: unknown[] }).rows ?? txs,
     });
   } catch (e) {
     if (e instanceof AdminAuthError) {
