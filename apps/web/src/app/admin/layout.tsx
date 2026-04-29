@@ -8,6 +8,9 @@ export const dynamic = 'force-dynamic';
 
 const NAV: { href: string; label: string }[] = [
   { href: '/admin', label: 'Обзор' },
+  { href: '/admin/requests', label: 'Запросы' },
+  { href: '/admin/routing', label: 'Роутинг' },
+  { href: '/admin/jobs', label: 'Джобы' },
   { href: '/admin/users', label: 'Юзеры' },
   { href: '/admin/orgs', label: 'Орги' },
   { href: '/admin/models', label: 'Модели' },

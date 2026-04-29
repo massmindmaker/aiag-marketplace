@@ -1,113 +1,306 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { db, sql } from '@/lib/db';
+import { rowsOf } from '@/lib/admin/rows';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { RevenueChart } from './RevenueChart';
+import { TopOrgsChart } from './TopOrgsChart';
 
 export const metadata = { title: 'Админка — AI-Aggregator' };
 export const dynamic = 'force-dynamic';
 
-async function getCounts() {
-  // Best-effort — fall back to zeros if DB not available (build-time, etc.)
+type Kpi = {
+  revenue_today: number;
+  mrr: number;
+  dau: number;
+  mau: number;
+  margin_pct: number;
+};
+
+async function getKpis(): Promise<Kpi> {
   try {
-    const [models, users, contests, payments, submissions] = await Promise.all([
-      db.execute(sql`SELECT COUNT(*)::int AS c FROM models`),
-      db.execute(sql`SELECT COUNT(*)::int AS c FROM users`),
-      db.execute(sql`SELECT COUNT(*)::int AS c FROM contests`),
-      db.execute(sql`SELECT COUNT(*)::int AS c FROM payments`),
-      db.execute(sql`SELECT COUNT(*)::int AS c FROM submissions`),
-    ]);
-    const get = (r: unknown): number => {
-      // drizzle pg returns { rows: [{ c: N }] }, neon returns array directly
-      // Normalise both shapes.
-      const rows = (r as { rows?: Array<{ c: number }> }).rows ??
-        (r as Array<{ c: number }>);
-      return rows?.[0]?.c ?? 0;
-    };
+    const r = await db.execute(sql`
+      WITH today AS (
+        SELECT
+          COALESCE(SUM(delta::numeric), 0) AS revenue_today,
+          COUNT(DISTINCT org_id)::int AS active_orgs_today
+        FROM gateway_transactions
+        WHERE type = 'settle'
+          AND created_at::date = CURRENT_DATE
+      ),
+      cost_24 AS (
+        SELECT COALESCE(SUM(upstream_cost_usd::numeric * 100), 0) AS upstream_cost_rub_est,
+               COALESCE(SUM(total_cost_rub::numeric), 0) AS revenue_24h
+        FROM requests
+        WHERE created_at > NOW() - INTERVAL '24 hours'
+      ),
+      dau AS (
+        SELECT COUNT(DISTINCT o.owner_id)::int AS dau
+        FROM gateway_transactions t
+        JOIN organizations o ON o.id = t.org_id
+        WHERE t.created_at > NOW() - INTERVAL '24 hours'
+      ),
+      mau AS (
+        SELECT COUNT(DISTINCT o.owner_id)::int AS mau
+        FROM gateway_transactions t
+        JOIN organizations o ON o.id = t.org_id
+        WHERE t.created_at > NOW() - INTERVAL '30 days'
+      )
+      SELECT
+        today.revenue_today,
+        cost_24.revenue_24h,
+        cost_24.upstream_cost_rub_est,
+        dau.dau,
+        mau.mau
+      FROM today, cost_24, dau, mau
+    `);
+    const row = rowsOf<{
+      revenue_today: string | number;
+      revenue_24h: string | number;
+      upstream_cost_rub_est: string | number;
+      dau: number;
+      mau: number;
+    }>(r)[0];
+    if (!row) throw new Error('no row');
+    const rev24 = Number(row.revenue_24h) || 0;
+    const cost24 = Number(row.upstream_cost_rub_est) || 0;
+    const margin = rev24 > 0 ? Math.max(0, ((rev24 - cost24) / rev24) * 100) : 0;
+
+    // MRR
+    let mrr = 0;
+    try {
+      const m = await db.execute(sql`
+        SELECT COALESCE(SUM(p.price_rub::numeric), 0)::numeric AS mrr
+        FROM subscriptions s
+        LEFT JOIN pricing_plans p ON p.id = s.plan_id
+        WHERE s.status = 'active'
+      `);
+      mrr = Number(rowsOf<{ mrr: string | number }>(m)[0]?.mrr ?? 0) || 0;
+    } catch {
+      // ignore — pricing_plans may not have price_rub column
+    }
+
     return {
-      models: get(models),
-      users: get(users),
-      contests: get(contests),
-      payments: get(payments),
-      submissions: get(submissions),
+      revenue_today: Number(row.revenue_today) || 0,
+      mrr,
+      dau: row.dau ?? 0,
+      mau: row.mau ?? 0,
+      margin_pct: margin,
     };
-  } catch {
-    return { models: 0, users: 0, contests: 0, payments: 0, submissions: 0 };
+  } catch (e) {
+    console.error('[admin] kpis fail', e);
+    return { revenue_today: 0, mrr: 0, dau: 0, mau: 0, margin_pct: 0 };
   }
 }
 
+async function getRevenueDaily(): Promise<{ date: string; total: number }[]> {
+  try {
+    const r = await db.execute(sql`
+      SELECT to_char(d::date, 'YYYY-MM-DD') AS date,
+             COALESCE(SUM(t.delta::numeric), 0)::numeric AS total
+      FROM generate_series(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, '1 day'::interval) d
+      LEFT JOIN gateway_transactions t
+        ON t.created_at::date = d::date AND t.type = 'settle'
+      GROUP BY d
+      ORDER BY d
+    `);
+    return rowsOf<{ date: string; total: string | number }>(r).map((row) => ({
+      date: row.date,
+      total: Number(row.total) || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function getTopOrgs(): Promise<{ name: string; total: number }[]> {
+  try {
+    const r = await db.execute(sql`
+      SELECT COALESCE(o.name, t.org_id::text) AS name,
+             COALESCE(SUM(t.delta::numeric), 0)::numeric AS total
+      FROM gateway_transactions t
+      LEFT JOIN organizations o ON o.id = t.org_id
+      WHERE t.type = 'settle'
+        AND t.created_at > NOW() - INTERVAL '7 days'
+      GROUP BY t.org_id, o.name
+      ORDER BY total DESC
+      LIMIT 10
+    `);
+    return rowsOf<{ name: string; total: string | number }>(r).map((row) => ({
+      name: row.name,
+      total: Number(row.total) || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function getHealth(): Promise<{ id: string; provider: string; ok: boolean | null }[]> {
+  try {
+    const r = await db.execute(sql`
+      SELECT u.id, u.provider,
+             (SELECT ok FROM upstream_health WHERE upstream_id = u.id ORDER BY checked_at DESC LIMIT 1) AS ok
+      FROM upstreams u
+      WHERE u.enabled
+      ORDER BY u.provider
+    `);
+    return rowsOf<{ id: string; provider: string; ok: boolean | null }>(r);
+  } catch {
+    return [];
+  }
+}
+
+async function getRecentActivity(): Promise<
+  { kind: string; label: string; at: string }[]
+> {
+  try {
+    const r = await db.execute(sql`
+      (SELECT 'audit' AS kind,
+              actor_email || ' · ' || action AS label,
+              created_at AS at
+       FROM audit_log
+       ORDER BY created_at DESC
+       LIMIT 10)
+      ORDER BY at DESC
+      LIMIT 10
+    `);
+    return rowsOf<{ kind: string; label: string; at: string }>(r);
+  } catch {
+    return [];
+  }
+}
+
+function fmtRub(n: number) {
+  return n.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+}
+
 export default async function AdminHomePage() {
-  const counts = await getCounts();
-
-  const cards = [
-    { title: 'Моделей в реестре', value: counts.models, href: '/admin/models' },
-    { title: 'Пользователей', value: counts.users, href: '/admin/users' },
-    { title: 'Контестов', value: counts.contests, href: '/admin/contests' },
-    { title: 'Платежей', value: counts.payments, href: '/admin/payments' },
-    { title: 'Сабмишенов', value: counts.submissions, href: '/admin/moderation/submissions' },
-  ];
-
-  const queues = [
-    {
-      slug: 'models',
-      title: 'Модели на модерацию',
-      count: 3,
-      href: '/admin/moderation/models',
-      description: 'Request-to-publish — review endpoint + pricing',
-    },
-    {
-      slug: 'submissions',
-      title: 'Flagged submissions',
-      count: 2,
-      href: '/admin/moderation/submissions',
-      description: 'Overfitting / virus / manual flags',
-    },
-  ];
+  const [kpi, daily, topOrgs, health, recent] = await Promise.all([
+    getKpis(),
+    getRevenueDaily(),
+    getTopOrgs(),
+    getHealth(),
+    getRecentActivity(),
+  ]);
 
   return (
-    <div className="container mx-auto px-4 py-10 max-w-6xl">
-      <h1 className="text-3xl font-bold tracking-tight mb-6">Админка</h1>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <h1 className="text-3xl font-bold tracking-tight mb-6">Бизнес-дашборд</h1>
 
-      <h2 className="text-lg font-semibold mb-3">Обзор</h2>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
-        {cards.map((c) => (
-          <Link key={c.title} href={c.href}>
-            <Card className="hover:border-primary transition-colors h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-normal text-muted-foreground">
-                  {c.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{c.value}</div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-xs text-muted-foreground">Выручка сегодня</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-amber-400">{fmtRub(kpi.revenue_today)} ₽</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-xs text-muted-foreground">MRR</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{fmtRub(kpi.mrr)} ₽</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-xs text-muted-foreground">DAU / MAU</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {kpi.dau} / {kpi.mau}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-xs text-muted-foreground">Маржа 24ч</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{kpi.margin_pct.toFixed(1)}%</div>
+          </CardContent>
+        </Card>
       </div>
 
-      <h2 className="text-lg font-semibold mb-3">Очереди модерации</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {queues.map((q) => (
-          <Link key={q.slug} href={q.href} className="block">
-            <Card className="hover:border-primary transition-colors h-full">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{q.title}</CardTitle>
-                  <Badge
-                    variant={q.count > 0 ? 'default' : 'outline'}
-                    className="min-w-[2rem] justify-center"
-                  >
-                    {q.count}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {q.description}
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Выручка, последние 30 дней</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RevenueChart data={daily} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Топ-10 организаций (7д)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TopOrgsChart data={topOrgs} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Здоровье аплинков</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {health.map((h) => (
+                <li key={h.id} className="flex items-center justify-between">
+                  <Link href="/admin/upstreams" className="hover:text-amber-400">
+                    {h.provider}
+                  </Link>
+                  <span
+                    className={`inline-block w-2.5 h-2.5 rounded-full ${
+                      h.ok === true
+                        ? 'bg-green-500'
+                        : h.ok === false
+                          ? 'bg-red-500'
+                          : 'bg-gray-500'
+                    }`}
+                  />
+                </li>
+              ))}
+              {health.length === 0 && (
+                <li className="text-muted-foreground">Нет данных</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Последние события</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-xs">
+              {recent.map((r, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between border-b border-border/40 pb-1"
+                >
+                  <span>
+                    <Badge variant="outline" className="mr-2 text-[10px]">
+                      {r.kind}
+                    </Badge>
+                    {r.label}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {new Date(r.at).toLocaleString('ru-RU')}
+                  </span>
+                </li>
+              ))}
+              {recent.length === 0 && (
+                <li className="text-muted-foreground">Пусто</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
