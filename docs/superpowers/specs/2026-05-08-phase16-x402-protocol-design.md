@@ -2,11 +2,31 @@
 
 **Status:** Design draft
 **Author:** AIAG core
-**Date:** 2026-05-08
+**Date:** 2026-05-08 (refined)
 **Phase dir:** `.planning/phases/16-x402-protocol-design/`
 **Wireframes:** `C:\Users\боб\brain\Projects\AIAG\Wireframes\p16-x402\`
 
 ---
+
+## Changes 2026-05-08 (refinement pass)
+
+**Scope clarification — x402 is Mini-App + external only (NOT web human users):**
+
+- ✅ **EXPOSED:**
+  - Mini-App (TG): агенты внутри Mini-App могут использовать x402 для autonomous topup через TON
+  - External agents: AI agents (Claude tool, GPT-4o-tools, LangChain agents) discover and pay our gateway via x402 from outside our app
+- ❌ **NOT EXPOSED:**
+  - Web app (`ai-aggregator.ru/dashboard`): traditional `Authorization: Bearer aiag_*` only, no x402
+  - Web admin: no x402 controls in `/admin` (admin observability for x402 transactions remains visible at `/admin/x402-*` pages — read-only for compliance audit)
+
+**Эффективно:** x402 — это *протокол поверхности* mini-app's agent runtime + external agents who choose to pay via it. **NOT** a payment method for human users on web.
+
+Other refinements:
+- Added § 2.5 "x402 inside Mini-App agents" — describes embedded TON wallet, agent budget integration, and Russian KYC threshold for x402 wallets ≥ 100k₽/mo equivalent.
+- Wireframes recolored под dark/amber web палитру (см. Phase 15 §2.4).
+- Wireframe 01 — header note added clarifying x402 не для web human users.
+- Wireframe 04 — добавлен таб «Из Mini-App агентов» со ссылкой на Phase 15.
+- Wireframe 05 — tooltip note that агент-инициатор может быть external или Mini-App.
 
 ## 0. TL;DR
 
@@ -28,6 +48,17 @@ This phase designs the integration of x402 into the AIAG gateway so that:
 - We preserve compatibility with our existing fiat (₽) billing pipeline:
   every x402 payment is converted to ₽ at the daily CBR rate and lands in the
   same `usage_events` ledger that powers ИП reporting.
+
+### 0.1 Where x402 is exposed
+
+| Surface | x402? | Auth/payment used | Notes |
+|---------|-------|-------------------|-------|
+| **Web (`ai-aggregator.ru/dashboard`)** | ❌ | `Authorization: Bearer aiag_*` | Юзеры платят картой (Tinkoff/YooKassa/СБП). x402 не виден в UI вообще. |
+| **Web admin (`/admin`)** | observability only | — | Нет x402 controls для human users. Read-only view of x402 transactions for compliance audit (`/admin/x402-*` страницы). |
+| **TG Mini App (агенты)** | ✅ | Embedded TON wallet (custodial, key derived from owner user_id) + опциональный tool `x402_pay` | Агенты внутри Mini-App используют x402 для autonomous topup через TON и оплаты внешних ресурсов |
+| **Gateway (`api.ai-aggregator.ru`)** | ✅ | `PAYMENT-SIGNATURE` header (per-request) или credit-mode | Открыто для внешних AI-агентов (Claude tool, GPT-tools, LangChain, CrewAI). Эти flows originates **вне нашего UI** — мы для них endpoint, который умеет принимать x402 |
+
+**Mental model:** x402 — это протокол поверхности **агентного слоя**. Web users не знают, что он существует. End-users mini-app узнают про него только если включают `x402_pay` tool в своём агенте. Главный потребитель — анонимные autonomous agents в open web.
 
 We ship in three sub-phases:
 
@@ -272,6 +303,31 @@ Critically: **no change to the LLM-routing core**. x402 is a sibling of
 `Authorization: Bearer sk-...` at the auth layer; once auth resolves to a
 billable principal (either a `user_id` for fiat or a `pubkey` for x402), the
 downstream pipeline is identical.
+
+### 2.5 x402 inside Mini-App agents
+
+When user creates an agent in Mini-App with `x402_pay` tool enabled:
+
+- Agent has its own **embedded TON wallet** (custodial, key derived deterministically from owner `user_id` via HKDF — see Phase 15 §3 wallet derivation).
+- Agent receives micropayments via x402 when external systems call its endpoint.
+- Agent makes outbound x402 payments when it needs autonomous services (другой LLM, external API, etc).
+- All x402 settle goes through the credit ladder:
+
+  ```
+  user.payg_credits  →  agent.budget  →  x402 outbound
+                                          (or owner credit on inbound)
+  ```
+
+- Inbound x402 payments to an agent's endpoint are accumulated as `agent.income_ton` and converted to `user.payg_credits` on owner's balance after daily reconciliation (CBR rate at settle time).
+
+**Compliance:**
+
+- Agents created by Russian residents → KYC required for x402 wallet at ≥ **100k₽/mo equivalent** turnover (per 115-ФЗ identification thresholds for ЦФА). KYC flow uses Госуслуги / Tinkoff ID — same as Phase 15 §6.
+- Daily limit per agent: `agent.daily_budget_rub` still applies — x402 outbound spend counts against it.
+- Withdrawal: owner can withdraw agent's income to TON Connect-paired personal wallet via signed message, минус 0.5% gas fee (как §4.2).
+- All x402 events (inbound + outbound + reconcile) logged to `audit_log` with `actor='agent:<agent_id>'` for ИП reporting.
+
+This is the only path by which our **own users** participate in x402 — and only via the Mini-App's agent abstraction, never as direct human-on-web flow.
 
 ---
 
